@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Platform, Animated, ScrollView, TextInput } from 'react-native';
+import { Image, StyleSheet, Platform, Animated, ScrollView, TextInput, Pressable } from 'react-native';
 import React from 'react';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { TText } from '@/components/TText';
@@ -11,15 +11,43 @@ export default function HomeScreen() {
   const [selectedAvatar, setSelectedAvatar] = React.useState(null);
   const [avatarMessage, setAvatarMessage] = React.useState("Helo, you're welcome 🤠!");
   const [avatarName, onChangeText] = React.useState('Enter your avatar name');
+  const [aura, setAura] = React.useState(0);
+  const [visibleAvatarComponent, setVisibleAvatarComponent] = React.useState(0);
+
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
   const slideAnim = React.useRef(new Animated.Value(0)).current;
  
-
-
   const handleCompleteOnboarding = () => { 
     setOnboardingCompleted(true);
-   
   }
+
+  const waitingMotor = (time, callback) => {
+    setTimeout(callback, time); // setInterval yerine setTimeout kullanıyoruz
+  };
+  
+  const messageMotor = (messageType) => {
+    switch (messageType) {
+      case "aura-info":
+        setAvatarMessage("Your aura is " + aura + "!");
+        waitingMotor(2000, () => {  
+          if (aura < 10) {
+            setAvatarMessage("You need to collect more Aura");
+            waitingMotor(2000, () => { // 2 saniye bekleyip tekrar
+              setAvatarMessage("Do you want to collect more Aura?");
+              setVisibleAvatarComponent(1);
+            });
+          }
+        });
+        break;
+      case "welcome":
+        setAvatarMessage("Hello, you're welcome 🤠!");
+        break;
+      default:
+        setAvatarMessage("Hello, you're welcome 🤠!");
+        break;
+    }
+  };
+  
 
   const animate = (nextPage) => {
     Animated.parallel([
@@ -390,14 +418,78 @@ export default function HomeScreen() {
             color: '#000000',
           }}
         >
-          <TText
-            type="title"
-            style={{
-              color: '#000000',
-            }}
+          <TView
+             style={{
+              backgroundColor: '#FFFFFF',
+             }}
+            
           >
-         {avatarName} says: {avatarMessage},
-          </TText>
+        {(() => {
+          switch (visibleAvatarComponent) {
+            case 1:
+              // JSX'i bir sarmalayıcı içine koymak
+              return (
+                <TText 
+                  style={{
+                    color: '#000000',
+                  }}
+
+                  >
+                    <TText
+                       
+                      style={{
+                        color: '#000000',
+
+                      }}
+                    >
+                      {avatarName + "   "}   
+                    </TText>
+                   
+                  <TButton
+                    type="default"
+                    buttonType="opacity"
+                    style={
+                      {
+                        height: 40,
+                        borderRadius: 8,
+                        backgroundColor: '#FFD700',
+                        borderColor: '#FFE700',
+                        borderWidth: 1,
+                      }
+                    }
+                    onPress={() => {
+                      alert("Task added!");
+                    }}
+                  >
+                    <TText
+                      type='default'
+                      style={{
+                        color: '#000000',
+                        fontWeight: 'bold',
+                        fontSize: 16,
+                         
+                      }}
+                      
+                    >
+                      Add Task
+                    </TText>
+                  </TButton>
+                </TText>
+              );
+            default:
+              // Normal metni ve avatar mesajını döndürmek
+              return (
+                <TText
+                style={{
+                  color: '#000000',
+                }}>
+                  {avatarName} says: {avatarMessage}
+                </TText>
+              );
+          }
+        })()}
+
+          </TView>
         </TButton>
         
         {/* Düşünce balonu kuyrukları */}
@@ -440,7 +532,12 @@ export default function HomeScreen() {
             }}
           />
         </TView>
-        
+        <TButton
+          type="default"
+          buttonType="opacity"
+          onPress={() => messageMotor("aura-info")}
+         
+        >
         <Image
           source={
             selectedAvatar === 1 ? require('@/assets/images/avatar1.png') : require('@/assets/images/avatar2.png')
@@ -452,6 +549,8 @@ export default function HomeScreen() {
           }}
           resizeMode='contain'
         />
+        </TButton>
+
         
       </TView>
     
