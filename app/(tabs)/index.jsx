@@ -4,8 +4,10 @@ import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { TText } from '@/components/TText';
 import { TView } from '@/components/TView';
 import { TButton } from '@/components/TButton';
+import { useNavigation } from '@react-navigation/native';
 
 export default function HomeScreen() {
+  const navigator = useNavigation();
   const [page, setPage] = React.useState(0);
   const [onboardingCompleted, setOnboardingCompleted] = React.useState(false);
   const [selectedAvatar, setSelectedAvatar] = React.useState(null);
@@ -13,17 +15,27 @@ export default function HomeScreen() {
   const [avatarName, onChangeText] = React.useState('Enter your avatar name');
   const [aura, setAura] = React.useState(0);
   const [visibleAvatarComponent, setVisibleAvatarComponent] = React.useState(0);
+  const [isClidked, setIsClicked] = React.useState(false);
+
 
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
   const slideAnim = React.useRef(new Animated.Value(0)).current;
- 
-  const handleCompleteOnboarding = () => { 
-    setOnboardingCompleted(true);
-  }
-
+  
   const waitingMotor = (time, callback) => {
     setTimeout(callback, time); // setInterval yerine setTimeout kullanıyoruz
   };
+
+  const handleAddTask = () => {
+    setIsClicked(true);
+    console.log(isClidked);
+    waitingMotor(500, () => {
+      navigator.navigate('tasks');
+    });
+  }
+
+  const handleCompleteOnboarding = () => { 
+    setOnboardingCompleted(true);
+  }
   
   const messageMotor = (messageType) => {
     switch (messageType) {
@@ -35,6 +47,11 @@ export default function HomeScreen() {
             waitingMotor(2000, () => { // 2 saniye bekleyip tekrar
               setAvatarMessage("Do you want to collect more Aura?");
               setVisibleAvatarComponent(1);
+              if (isClidked) {
+                setAura(aura + 10);
+                setVisibleAvatarComponent(0);
+              }
+              console.log("aura" + aura);
             });
           }
         });
@@ -211,17 +228,6 @@ export default function HomeScreen() {
           }}
           
         >
-
-          {
-          /*
-
-                Burada spesifik avatarlar olacak.
-
-                Yana kaydıralabilir bir liste olabilir.
-
-                seçilen avatarınn border'ı değişecek.
-
-                */}
                 <TView
                 style={{
                  
@@ -395,9 +401,8 @@ export default function HomeScreen() {
           alignItems: 'center',
           backgroundColor: '#FFFFFF',
           padding: 16,
-          borderRadius: 20, // Daha yuvarlak köşeler
+          borderRadius: 20,
           margin: 16,
-          // Düşünce balonu gölgesi
           shadowColor: "#000",
           shadowOffset: {
             width: 0,
@@ -406,9 +411,7 @@ export default function HomeScreen() {
           shadowOpacity: 0.25,
           shadowRadius: 3.84,
           elevation: 5,
-          // Düşünce balonu kuyruk pozisyonu için margin
           marginBottom: 30,
-          // Pozisyon ayarı
           position: 'relative',
         }}
       >
@@ -427,16 +430,13 @@ export default function HomeScreen() {
         {(() => {
           switch (visibleAvatarComponent) {
             case 1:
-              // JSX'i bir sarmalayıcı içine koymak
               return (
                 <TText 
                   style={{
                     color: '#000000',
                   }}
-
                   >
                     <TText
-                       
                       style={{
                         color: '#000000',
 
@@ -458,7 +458,7 @@ export default function HomeScreen() {
                       }
                     }
                     onPress={() => {
-                      alert("Task added!");
+                      handleAddTask();
                     }}
                   >
                     <TText
@@ -466,10 +466,8 @@ export default function HomeScreen() {
                       style={{
                         color: '#000000',
                         fontWeight: 'bold',
-                        fontSize: 16,
-                         
-                      }}
-                      
+                        fontSize: 16,      
+                      }} 
                     >
                       Add Task
                     </TText>
@@ -477,7 +475,6 @@ export default function HomeScreen() {
                 </TText>
               );
             default:
-              // Normal metni ve avatar mesajını döndürmek
               return (
                 <TText
                 style={{
@@ -488,11 +485,8 @@ export default function HomeScreen() {
               );
           }
         })()}
-
           </TView>
         </TButton>
-        
-        {/* Düşünce balonu kuyrukları */}
           <TView
             style={{
               position: 'absolute',
@@ -550,6 +544,14 @@ export default function HomeScreen() {
           resizeMode='contain'
         />
         </TButton>
+
+          <TText
+            style={{
+              color: '#FFFFFF',
+            }}
+          >
+            Aura: {aura}
+          </TText>
 
         
       </TView>
