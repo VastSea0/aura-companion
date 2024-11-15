@@ -1,10 +1,12 @@
-import { Image, StyleSheet, Platform, Animated, ScrollView, TextInput, Pressable } from 'react-native';
+import { Image, StyleSheet, Platform, Animated, View, Text, Button, ScrollView, TextInput, Pressable } from 'react-native';
 import React from 'react';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { TText } from '@/components/TText';
 import { TView } from '@/components/TView';
 import { TButton } from '@/components/TButton';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 export default function HomeScreen() {
   const navigator = useNavigation();
@@ -16,6 +18,10 @@ export default function HomeScreen() {
   const [aura, setAura] = React.useState(0);
   const [visibleAvatarComponent, setVisibleAvatarComponent] = React.useState(0);
   const [isClidked, setIsClicked] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [user, setUser] = React.useState(null);
+
 
 
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
@@ -105,6 +111,71 @@ export default function HomeScreen() {
     animate(page + 1);
   }
 
+ 
+  const registerUser = async () => {
+    try {
+      const response = await fetch('http://192.168.1.161:3000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        await AsyncStorage.setItem('userToken', data.token);
+        setUser(data); // Kullanıcıyı state'e ekle
+        alert('Başarı', 'Kayıt başarılı!');
+      } else {
+        alert('Hata', data.error);
+      }
+    } catch (error) {
+      alert('Hata', 'Kayıt sırasında bir hata oluştu.');
+    }
+};
+
+const loginUser = async () => {
+  try {
+    // First, authenticate with your server
+    const response = await fetch('http://192.168.1.161:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      // Store the JWT token
+      await AsyncStorage.setItem('userToken', data.token);
+      
+      // Set user data in state
+      setUser(data.user);
+      
+      alert('Başarı', 'Giriş başarılı!');
+    } else {
+      console.log('Hata', data.error);
+      alert('Hata', data.error);
+    }
+  } catch (error) {
+    alert('Hata', 'Giriş sırasında bir hata oluştu.');
+    console.log('Hata:', error);
+  }
+};
+
+
+ 
+const logout = async () => {
+  try {
+    await AsyncStorage.removeItem('userToken');
+    setUser(null); // veya setUser(null)
+    // Kullanıcıyı login sayfasına yönlendir
+    // navigation.navigate('Login');
+  } catch (error) {
+    console.error('Çıkış hatası:', error);
+    Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu');
+  }
+};
+
+
   const pageOne = (
     <Animated.View style={[
       {
@@ -135,6 +206,7 @@ export default function HomeScreen() {
       </TButton>
     </Animated.View>
   ); 
+ 
 
   const pageTwo = (
     <Animated.View style={[
@@ -380,6 +452,95 @@ export default function HomeScreen() {
     </Animated.View>
   );
 
+  const LoginPage = (
+    <Animated.View style={[
+      {
+        opacity: fadeAnim,
+        transform: [{ translateX: slideAnim }]
+      }
+    ]}>
+      <TView  
+        style={styles.container}
+     >
+        <TView 
+            style={{
+              borderWidth: 1,
+              borderColor: '#FFFFFF',
+              padding: 16,
+              borderRadius: 8,
+            }}
+        >
+      {user ? (
+    
+        <TView>
+          <TText style={{ fontSize: 18, fontWeight: 'bold' }}>Hoş geldiniz, {user.email}!</TText>
+          <TText>Kullanıcı ID: {user.uid}</TText>
+          <TButton   onPress={logout}>
+            Çıkış Yap
+          </TButton>
+        </TView>
+      ) : (
+ 
+        <TView 
+          style={{
+            justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <TText  
+            type='title'
+            style={{
+              marginBottom: 16,
+            }}
+          >
+            Giriş/Kayıt
+        </TText>
+          <TextInput
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            style={{ 
+              borderWidth: 1, 
+              padding: 10, 
+              width: 200, 
+              marginBottom: 10, 
+              color: '#ffffff',
+              borderColor: '#ffffff',
+              borderRadius: 8,
+            }}
+          />
+          <TextInput
+            placeholder="Şifre"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            style={{ 
+              borderWidth: 1, 
+              padding: 10, 
+              width: 200, 
+              marginBottom: 10, 
+              color: '#ffffff',
+              borderColor: '#ffffff',
+              borderRadius: 8,
+            }}
+          />
+          <TButton type='pressable' style={{borderWidth: 1, borderColor: "#fff", borderRadius: 8 , marginBottom: 10}} title="Kayıt Ol" onPress={registerUser}>
+            Kayıt Ol
+          </TButton>
+          <TButton type='pressable' style={{borderWidth: 1, borderColor: "#fff", borderRadius: 8 , marginBottom: 10 }} title="Giriş Yap" onPress={loginUser} >
+            Giriş Yap
+          </TButton>
+        </TView>
+      )}
+    </TView>
+      </TView>
+ 
+    </Animated.View>
+  );
+
+ 
+ 
+
   const MainPage = (
     <TView style={{
       flex: 1,
@@ -567,7 +728,9 @@ export default function HomeScreen() {
       alignItems: 'center',
     }}>
       {onboardingCompleted ? MainPage : (() => {
-        switch (page) {
+
+        return LoginPage;
+        /*switch (page) {
           case 0:
             return pageOne;
           case 1:
@@ -580,7 +743,7 @@ export default function HomeScreen() {
             return pageFive;
           default:
             return pageOne;
-        }
+        }*/
       })()}
     </TView>
   );
