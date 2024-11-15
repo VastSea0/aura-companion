@@ -5,14 +5,16 @@ import { TView } from '@/components/TView';
 import { TButton } from '@/components/TButton';
 import { SelectList } from "react-native-dropdown-select-list";
 import { AntDesign } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Tasks() {
   const [tasks, setTasks] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
-  const [viewMode, setViewMode] = React.useState('personal'); // 'personal' or 'all'
+  const [viewMode, setViewMode] = React.useState('personal');
   const [selectedAuraEvent, setSelectedAuraEvent] = React.useState("");
-  const userId = "current-user-id"; // Kullanıcı ID'sini auth sisteminden almalısınız
-  
+  const [userData, setUserData] = React.useState(null);
+  const [token, setToken] = React.useState(null);
+
   const data = [
     {key: '1', value: 'Sanatsal Aktiviteler (+200 aura)', aura: 200},
     {key: '2', value: 'Oyun Oynama (+100/-100 aura)', aura: 100},
@@ -24,97 +26,196 @@ export default function Tasks() {
     {key: '8', value: 'Sosyal Aktiviteler (+100 aura)', aura: 100},
   ];
 
+  const fetchUserData = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('userToken');
+      if (!storedToken) {
+        Alert.alert('Hata', 'Oturum bulunamadı');
+        return;
+      }
+
+      setToken(storedToken);
+
+      const response = await fetch('http://192.168.1.161:3000/api/user', {
+        headers: {
+          'Authorization': `Bearer ${storedToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          await AsyncStorage.removeItem('userToken');
+          // Burada navigation.navigate('Login') eklenebilir
+          return;
+        }
+        throw new Error('Kullanıcı bilgileri alınamadı');
+      }
+
+      const data = await response.json();
+      setUserData(data);
+    } catch (error) {
+      console.error('Kullanıcı bilgisi alınırken hata:', error);
+      Alert.alert('Hata', 'Kullanıcı bilgileri alınamadı');
+    }
+  };
+
   React.useEffect(() => {
-    fetchTasks();
-  }, [viewMode]);
+    fetchUserData();
+  }, []);
 
   const fetchTasks = async () => {
+    if (!userData) return;
+
     setLoading(true);
     try {
       const baseUrl = 'http://192.168.1.161:3000/api/collection';
-      let url = '';
       
+      // userId'yi userData.uid'den alalım
+      const userId = userData.uid;
+      
+      let response;
       if (viewMode === 'personal') {
-        url = `${baseUrl}/tasks/filter?field=userId&operator==&value=${userId}`;
+        // Direkt olarak POST request ile filtreleme yapalım
+        response = await fetch(`${baseUrl}/tasks/query`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            filters: [
+              {
+                field: 'userId',
+                operator: '==',
+                value: userId
+              }
+            ]
+          })
+        });
       } else {
-        url = `${baseUrl}/tasks`;
+        response = await fetch(`${baseUrl}/tasks`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
       }
 
-      const response = await fetch(url);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Görevler alınırken hata oluştu');
+      }
+
       const data = await response.json();
-      setTasks(data);
+      
+      if (Array.isArray(data)) {
+        setTasks(data);
+      } else {
+        console.log('Unexpected data format:', data);
+        setTasks([]);
+      }
     } catch (error) {
-      Alert.alert("Hata", "Görevler yüklenirken bir hata oluştu.");
-      console.error(error);
+      console.error('Fetch error details:', error);
+      setTasks([]); // Hata durumunda boş array set edelim
+      Alert.alert("Hata", "Görevler yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
     } finally {
       setLoading(false);
     }
   };
 
+  React.useEffect(() => {
+    if (userData) {
+      fetchTasks();
+    }
+  }, [viewMode, userData]);
+
+ 
+
   const handleCompleteTask = (taskId) => {
+    if (!token) {
+      Alert.alert("Hata", "Oturum bulunamadı");
+      return;
+    }
+
     Alert.alert(
-        "Görevi Tamamla",
-        "Bu görevi tamamladığınızdan emin misiniz?",
-        [
-            {
-                text: "İptal",
-                style: "cancel"
-            },
-            {
-                text: "Tamamla",
-                style: "default",
-                onPress: async () => {
-                    try {
-                        const docRef = `tasks/${taskId}`; // Assuming you have a 'tasks' collection
-                        const response = await fetch(`http://192.168.1.161:3000/api/collection/tasks/${taskId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ completed: true })
-                        });
+      "Görevi Tamamla",
+      "Bu görevi tamamladığınızdan emin misiniz?",
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Tamamla",
+          style: "default",
+          onPress: async () => {
+            try {
+              const response = await fetch(`http://192.168.1.161:3000/api/collection/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ completed: true })
+              });
 
-                        if (!response.ok) {
-                            throw new Error('Görev güncellenirken bir hata oluştu.');
-                        }
+              if (!response.ok) {
+                throw new Error('Görev güncellenirken bir hata oluştu');
+              }
 
-                        setTasks(currentTasks =>
-                            currentTasks.map(task =>
-                                task.id === taskId ? { ...task, completed: true } : task
-                            )
-                        );
-                    } catch (error) {
-                        Alert.alert("Hata", error.message);
-                    }
-                }
+              setTasks(currentTasks =>
+                currentTasks.map(task =>
+                  task.id === taskId ? { ...task, completed: true } : task
+                )
+              );
+            } catch (error) {
+              Alert.alert("Hata", error.message);
             }
-        ]
+          }
+        }
+      ]
     );
-};
+  };
 
   const handleAddTask = async () => {
+    if (!userData || !token) {
+      Alert.alert("Hata", "Oturum bilgisi bulunamadı");
+      return;
+    }
+
     const selectedCategory = data.find(item => item.value === selectedAuraEvent);
-    const auraValue = selectedCategory ? selectedCategory.aura : 0;
+    if (!selectedCategory) {
+      Alert.alert("Hata", "Lütfen bir aktivite tipi seçin");
+      return;
+    }
 
     const newTask = {
-      title: 'Yeni Görev',
-      userId: userId,
+      title: selectedCategory.value,
+      userId: userData.uid, // uid kullanıyoruz
       completed: false,
-      aura: auraValue,
+      aura: selectedCategory.aura,
       createdAt: new Date().toISOString(),
-      priority: selectedAuraEvent || 'Orta Öncelik'
+      priority: selectedCategory.value
     };
 
     try {
       const response = await fetch('http://192.168.1.161:3000/api/collection/tasks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(newTask)
       });
 
-      if (response.ok) {
-        fetchTasks();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Görev eklenirken bir hata oluştu');
       }
+
+      await fetchTasks(); // Görevleri yeniden yükle
+      setSelectedAuraEvent("");
     } catch (error) {
-      Alert.alert("Hata", "Görev eklenirken bir hata oluştu.");
+      console.error('Add task error:', error);
+      Alert.alert("Hata", error.message);
     }
   };
 
