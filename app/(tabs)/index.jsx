@@ -1,15 +1,16 @@
-import { Image, StyleSheet, Platform, Animated, View, Text, Button, ScrollView, TextInput, Pressable } from 'react-native';
+import { Image, StyleSheet, Platform, Animated, TouchableOpacity , Alert, View, Text, Button, ScrollView, TextInput, Pressable } from 'react-native';
 import React from 'react';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
+import Tooltip from 'react-native-walkthrough-tooltip';
 import { TText } from '@/components/TText';
 import { TView } from '@/components/TView';
 import { TButton } from '@/components/TButton';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { navigate } from '../_layout';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function HomeScreen() {
-  const navigator = useNavigation();
+  const [showTip, setTip] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const [onboardingCompleted, setOnboardingCompleted] = React.useState(false);
   const [selectedAvatar, setSelectedAvatar] = React.useState(null);
@@ -21,27 +22,51 @@ export default function HomeScreen() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [user, setUser] = React.useState(null);
+  const [userIsLoggedIn, setUserIsLoggedIn] = React.useState(false);
 
 
 
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
   const slideAnim = React.useRef(new Animated.Value(0)).current;
   
+ 
+
   const waitingMotor = (time, callback) => {
     setTimeout(callback, time); // setInterval yerine setTimeout kullanıyoruz
   };
 
+ 
+
   const handleAddTask = () => {
-    setIsClicked(true);
-    console.log(isClidked);
-    waitingMotor(500, () => {
-      navigator.navigate('tasks');
-    });
+    Alert.alert(
+      "Create a new task",
+      "Would you like to add a new task?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes",
+          style: "default",
+          onPress: () => {
+            console.log('Add task button pressed');
+            setIsClicked(true);
+            //navigation.navigate('tasks');
+            setTip(true);
+            console.log(isClidked);
+            waitingMotor(500, () => {
+              setTip(true);
+            });
+          }
+        }
+      ]
+    );
+ 
   }
 
   const handleCompleteOnboarding = () => { 
     setOnboardingCompleted(true);
   }
+
+ 
   
   const messageMotor = (messageType) => {
     switch (messageType) {
@@ -54,11 +79,16 @@ export default function HomeScreen() {
               setAvatarMessage("Do you want to collect more Aura?");
               setVisibleAvatarComponent(1);
               if (isClidked) {
-                setAura(aura + 10);
+                //setAura(aura + 10);
+                //pageNavigator('tasks');
                 setVisibleAvatarComponent(0);
+                setAvatarMessage("helo");
               }
               console.log("aura" + aura);
             });
+          } else if ( aura < 20) {
+            setAvatarMessage("Congratulations! You have reached your goal!");
+         
           }
         });
         break;
@@ -150,7 +180,9 @@ const loginUser = async () => {
       // Set user data in state
       setUser(data.user);
       
-      alert('Başarı', 'Giriş başarılı!');
+     // alert('Başarı', 'Giriş başarılı!');
+      setUserIsLoggedIn(true); // Kullanıcı girişi yapıldığı için state'e ekle
+
     } else {
       console.log('Hata', data.error);
       alert('Hata', data.error);
@@ -576,10 +608,14 @@ const logout = async () => {
           position: 'relative',
         }}
       >
-        <TButton
-          type="title" 
+        <TView
+           
           style={{
             color: '#000000',
+            backgroundColor: '#FFFFFF',
+            
+            padding: 15,
+
           }}
         >
           <TView
@@ -603,36 +639,39 @@ const logout = async () => {
 
                       }}
                     >
-                      {avatarName + "   "}   
-                    </TText>
+                      {avatarName + " says:  "} 
+                      <TButton
+                      type="default"
+                      buttonType="pressa"
+                      style={{
+                        color: '#000000',
+                        fontWeight: 'bold',
+                      }}
+                    
                    
-                  <TButton
-                    type="default"
-                    buttonType="opacity"
-                    style={
-                      {
-                        height: 40,
-                        borderRadius: 8,
-                        backgroundColor: '#FFD700',
-                        borderColor: '#FFE700',
-                        borderWidth: 1,
-                      }
-                    }
                     onPress={() => {
-                      handleAddTask();
+                      setAura(aura + 10);
+                      console.log("clicked");
                     }}
                   >
+                    
                     <TText
                       type='default'
                       style={{
                         color: '#000000',
                         fontWeight: 'bold',
-                        fontSize: 16,      
+                         
                       }} 
+                      
+                      onPress={() => handleAddTask()}
                     >
-                      Add Task
+                      Add Task?
                     </TText>
-                  </TButton>
+                    
+                  </TButton>  
+                    </TText>
+                   
+
                 </TText>
               );
             default:
@@ -647,7 +686,7 @@ const logout = async () => {
           }
         })()}
           </TView>
-        </TButton>
+        </TView>
           <TView
             style={{
               position: 'absolute',
@@ -713,10 +752,61 @@ const logout = async () => {
           >
             Aura: {aura}
           </TText>
-
+      
         
       </TView>
-    
+      <TView
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'end',
+          alignItems: 'end',
+        }}
+      >
+     
+      <TView
+          
+          content={
+            <View>
+              <Text> Press Tasks Page </Text>
+            </View>
+          }
+          
+          placement="bottom"
+          // below is for the status bar of react navigation bar
+          topAdjustment={Platform.OS === 'android' ? -StatusBar.currentHeight : 0}
+        >
+        <TouchableOpacity
+            style={{  display: 'flex' , width: 250, marginTop: 20}}
+             
+          >
+            
+        </TouchableOpacity>
+      </TView>
+      <Tooltip
+          isVisible={showTip}
+          content={
+            <View>
+              <Text> 
+                Go to tasks page
+                <Ionicons size={28} style={{color: "#000"}} name='arrow-down-outline'></Ionicons> </Text>
+            </View>
+          }
+          onClose={() => setTip(false)}
+          placement="bottom"
+          // below is for the status bar of react navigation bar
+          topAdjustment={Platform.OS === 'android' ? -StatusBar.currentHeight : 0}
+        >
+        <TouchableOpacity
+            style={[{   width: '100%', marginTop: 20}]}
+            onPress={() => setTip(true)}
+          >
+          <Text>
+                .
+          </Text>
+        </TouchableOpacity>
+      </Tooltip>
+
+      </TView>
     </TView>
   );
 
@@ -729,21 +819,27 @@ const logout = async () => {
     }}>
       {onboardingCompleted ? MainPage : (() => {
 
-        return LoginPage;
-        /*switch (page) {
-          case 0:
-            return pageOne;
-          case 1:
-            return pageTwo;
-          case 2:
-            return pageThree;
-          case 3:
-            return pageFour;
-          case 4:
-            return pageFive;
-          default:
-            return pageOne;
-        }*/
+        if (userIsLoggedIn == false) {
+          return LoginPage;
+        
+        } else if (userIsLoggedIn == true) {
+          switch (page) {
+            case 0:
+              return pageOne;
+            case 1:
+              return pageTwo;
+            case 2:
+              return pageThree;
+            case 3:
+              return pageFour;
+            case 4:
+              return pageFive;
+            default:
+              return pageOne;
+          
+        };
+      }
+
       })()}
     </TView>
   );

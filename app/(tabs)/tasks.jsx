@@ -279,7 +279,7 @@ export default function Tasks() {
   if (loading) {
     return (
       <TView style={styles.container}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+        <ActivityIndicator   color="#FFFFFF" />
       </TView>
     );
   }
