@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-
+import Tooltip from 'react-native-walkthrough-tooltip';
 import { TabBarIcon } from '@/components/navigation/TabBarIcon';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -10,8 +10,11 @@ export default function TabLayout() {
 
   return (
     <Tabs
+     
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: "#FFD700",
+        tabBarInactiveTintColor: "#B0B0B0",
+        tabBarStyle: { backgroundColor: colorScheme === 'dark' ? "#121212" : "white" },
         headerShown: false,
       }}>
       <Tabs.Screen
@@ -34,6 +37,7 @@ export default function TabLayout() {
       />
     <Tabs.Screen
       name="tasks"
+      
       options={{
         title: 'Tasks',
         tabBarIcon: ({ color, focused }) => (
