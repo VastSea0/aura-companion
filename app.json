@@ -1,5 +1,6 @@
 {
   "expo": {
+    "newArchEnabled": true,
     "name": "aura-companion",
     "slug": "aura-companion",
     "version": "1.0.0",
@@ -13,13 +14,17 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "newArchEnabled": true,
+      "bundleIdentifier": "com.aura.companion"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "newArchEnabled": true,
+      "bundleIdentifier": "com.aura.companion"
     },
     "web": {
       "bundler": "metro",
@@ -27,7 +32,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router" 
+      "expo-router",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
