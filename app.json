@@ -24,7 +24,8 @@
         "backgroundColor": "#ffffff"
       },
       "newArchEnabled": true,
-      "bundleIdentifier": "com.aura.companion"
+      "bundleIdentifier": "com.aura.companion",
+      "package": "com.aura.companion"
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +38,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "e7d45477-0c29-427f-920a-f5f4b3189c28"
+      }
     }
   }
 }
