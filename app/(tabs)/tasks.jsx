@@ -6,25 +6,43 @@ import { TButton } from '@/components/TButton';
 import { SelectList } from "react-native-dropdown-select-list";
 import { AntDesign } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AvatarEngine from '@/components/AvatarEngine';
+import {notify} from '@/components/eventManager';
+
+import { useAppContext } from '../AppContext';
 
 export default function Tasks() {
   const [tasks, setTasks] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [viewMode, setViewMode] = React.useState('personal');
+  const [filterMode, setFilterMode] = React.useState('all'); // Yeni state
   const [selectedAuraEvent, setSelectedAuraEvent] = React.useState("");
   const [userData, setUserData] = React.useState(null);
   const [token, setToken] = React.useState(null);
 
+  // Shared states
+  const { aura, setAura, auraActivityMessage, setAuraActivityMessage } = useAppContext();
+
   const data = [
-    {key: '1', value: 'Sanatsal Aktiviteler (+200 aura)', aura: 200},
-    {key: '2', value: 'Oyun Oynama (+100/-100 aura)', aura: 100},
-    {key: '3', value: 'Video İzleme (-50/-100 aura)', aura: -75},
-    {key: '4', value: 'Sosyal Medyada Fotoğraf Akışı (-100 aura)', aura: -100},
-    {key: '5', value: 'Kısa Video Akışı (-200 aura)', aura: -200},
-    {key: '6', value: 'Dış Mekan Aktiviteleri (+150 aura)', aura: 150},
-    {key: '7', value: 'Odak Gerektiren Etkinlikler (+250 aura)', aura: 250},
-    {key: '8', value: 'Sosyal Aktiviteler (+100 aura)', aura: 100},
-  ];
+    {key: '1', value: 'Artistic Activities', aura: 200},
+    {key: '2', value: 'Playing Games', aura: -100},
+    {key: '3', value: 'Watching Videos', aura: -75},
+    {key: '4', value: 'Scrolling Photos on Social Media', aura: -100},
+    {key: '5', value: 'Short Video Streaming', aura: -200},
+    {key: '6', value: 'Outdoor Activities', aura: 150},
+    {key: '7', value: 'Focus Required Activities', aura: 250},
+    {key: '8', value: 'Social Activities', aura: 100},
+    {key: '9', value: 'Reading Books', aura: 100},
+    {key: '10', value: 'Meditation', aura: 150},
+    {key: '11', value: 'Cooking', aura: 50},
+    {key: '12', value: 'Learning a New Skill', aura: 200},
+    {key: '13', value: 'Exercising', aura: 150},
+    {key: '14', value: 'Listening to Music', aura: 50},
+    {key: '15', value: 'Gardening', aura: 100},
+    {key: '16', value: 'Volunteering', aura: 200}
+];
+
+  const avatarEngine = new AvatarEngine();
 
   const fetchUserData = async () => {
     try {
@@ -132,12 +150,12 @@ export default function Tasks() {
 
  
 
-  const handleCompleteTask = (taskId) => {
+  const handleCompleteTask = (task) => {
     if (!token) {
       Alert.alert("Hata", "Oturum bulunamadı");
       return;
     }
-
+  
     Alert.alert(
       "Görevi Tamamla",
       "Bu görevi tamamladığınızdan emin misiniz?",
@@ -148,7 +166,7 @@ export default function Tasks() {
           style: "default",
           onPress: async () => {
             try {
-              const response = await fetch(`http://192.168.1.161:3000/api/collection/tasks/${taskId}`, {
+              const response = await fetch(`http://192.168.1.161:3000/api/collection/tasks/${task.id}`, {
                 method: 'PUT',
                 headers: {
                   'Authorization': `Bearer ${token}`,
@@ -156,16 +174,38 @@ export default function Tasks() {
                 },
                 body: JSON.stringify({ completed: true })
               });
-
+  
               if (!response.ok) {
                 throw new Error('Görev güncellenirken bir hata oluştu');
               }
-
+  
               setTasks(currentTasks =>
-                currentTasks.map(task =>
-                  task.id === taskId ? { ...task, completed: true } : task
+                currentTasks.map(t =>
+                  t.id === task.id ? { ...t, completed: true } : t
                 )
               );
+  
+              const activityMessage = avatarEngine.getActivityMessage(task.title, task.aura);
+              notify('taskCompleted', activityMessage);
+  
+              // Aura güncellemesi
+              const newAura = aura + task.aura;
+              setAura(newAura);
+  
+              // Kullanıcı belgesini güncelle
+              const userUpdateResponse = await fetch(`http://192.168.1.161:3000/api/collection/users/${userData.uid}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ aura: newAura })
+              });
+  
+              if (!userUpdateResponse.ok) {
+                throw new Error('Kullanıcı belgesi güncellenirken bir hata oluştu');
+              }
+  
             } catch (error) {
               Alert.alert("Hata", error.message);
             }
@@ -174,6 +214,7 @@ export default function Tasks() {
       ]
     );
   };
+  
 
   const handleAddTask = async () => {
     if (!userData || !token) {
@@ -219,6 +260,15 @@ export default function Tasks() {
     }
   };
 
+  const getFilteredTasks = () => {
+    if (filterMode === 'completed') {
+      return tasks.filter(task => task.completed);
+    } else if (filterMode === 'incomplete') {
+      return tasks.filter(task => !task.completed);
+    }
+    return tasks;
+  };
+
   const renderTask = ({ item }) => (
     <TView style={[styles.card, item.completed && styles.completedCard]}>
       <TView style={styles.taskHeader}>
@@ -260,7 +310,7 @@ export default function Tasks() {
           type={!item.completed ? "highlight" : "disabled"}
           style={[styles.button, styles.completeButton]}
           onPress={() => !item.completed 
-            ? handleCompleteTask(item.id) 
+            ? handleCompleteTask(item) 
             : Alert.alert("Bu görev zaten tamamlandı")}
         >
           {item.completed ? "Tamamlandı" : "Tamamla"}
@@ -285,11 +335,17 @@ export default function Tasks() {
   }
 
   return (
-    <TView style={styles.container}>
+    <TView style={[styles.container, {
+     
+      paddingTop: 30,
+      overflow: 'hidden',
+       
+    }]}>
       <SafeAreaView />
+
       <TView style={styles.header}>
         <TText type="title">Görevler</TText>
-        <TView style={styles.viewModeContainer}>
+      {/*<TView style={styles.viewModeContainer}>
           <TButton
             type={viewMode === 'personal' ? 'highlight' : 'pressable'}
             style={styles.viewModeButton}
@@ -304,7 +360,31 @@ export default function Tasks() {
           >
             Tümü
           </TButton>
-        </TView>
+        </TView> */}
+      </TView>
+
+      <TView style={styles.filterContainer}>
+        <TButton
+          type={filterMode === 'all' ? 'highlight' : 'pressable'}
+          style={styles.filterButton}
+          onPress={() => setFilterMode('all')}
+        >
+          Tümü
+        </TButton>
+        <TButton
+          type={filterMode === 'completed' ? 'highlight' : 'pressable'}
+          style={styles.filterButton}
+          onPress={() => setFilterMode('completed')}
+        >
+          Bitti
+        </TButton>
+        <TButton
+          type={filterMode === 'incomplete' ? 'highlight' : 'pressable'}
+          style={styles.filterButton}
+          onPress={() => setFilterMode('incomplete')}
+        >
+          Devam Ediyor
+        </TButton>
       </TView>
 
       <TView style={styles.controlPanel}>
@@ -331,7 +411,7 @@ export default function Tasks() {
       </TView>
 
       <FlatList
-        data={tasks}
+        data={getFilteredTasks()}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderTask}
         contentContainerStyle={styles.listContainer}
@@ -508,5 +588,14 @@ const styles = StyleSheet.create({
   detailsButton: {
     borderWidth: 1,
     borderColor: '#ffffff',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    
+  },
+  filterButton: {
+    flex: 1,
+  
   },
 });
