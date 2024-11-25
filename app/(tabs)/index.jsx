@@ -1,9 +1,9 @@
-import { 
+import {
   Image,
   StyleSheet,
   Platform,
   Animated,
-  TouchableOpacity, 
+  TouchableOpacity,
   Alert,
   View,
   Text,
@@ -15,8 +15,10 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Dimensions,
+  TouchableHighlight,
+  Modal,
 } from 'react-native';
-import React, {useState, useEffect, useRef} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Tooltip from 'react-native-walkthrough-tooltip';
 import { TText } from '@/components/TText';
 import { TView } from '@/components/TView';
@@ -27,9 +29,9 @@ import { navigate } from '../_layout';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAppContext } from '../AppContext';
 import AvatarEngine from '../../components/AvatarEngine';
-import  { addListener, removeListener } from '../../components/eventManager';
-import {Picker} from '@react-native-picker/picker';
-import ConfettiCannon, {DEFAULT_COLORS, DEFAULT_EXPLOSION_SPEED, DEFAULT_FALL_SPEED} from 'react-native-confetti-cannon';
+import { addListener, removeListener } from '../../components/eventManager';
+import { Picker } from '@react-native-picker/picker';
+import ConfettiCannon, { DEFAULT_COLORS, DEFAULT_EXPLOSION_SPEED, DEFAULT_FALL_SPEED } from 'react-native-confetti-cannon';
 
 
 export default function HomeScreen() {
@@ -50,6 +52,8 @@ export default function HomeScreen() {
   const bounceAnim = useRef(new Animated.Value(1)).current;
   const [userData, setUserData] = React.useState(null);
   const [token, setToken] = React.useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [showToken, setShowToken] = useState(false);
 
 
   // Shared states
@@ -112,7 +116,7 @@ export default function HomeScreen() {
         break;
     }
   };
-  
+
 
 
   useEffect(() => {
@@ -146,13 +150,13 @@ export default function HomeScreen() {
     ]).start();
   }, [sleepHours, sleepMinutes]);
   const getTotalHours = () => {
-    
+
     const hours = Number(sleepHours);
     const minutes = Number(sleepMinutes);
     return hours + (minutes / 60);
   };
 
- 
+
   const getEmoji = () => {
     const totalHours = getTotalHours();
     if (totalHours < 4) return '😫';      // critically low
@@ -182,7 +186,7 @@ export default function HomeScreen() {
     if (totalHours < 13) return 'Very long sleep duration. Consider reducing your sleep time.';
     return 'Excessive sleep duration. Consider consulting a sleep specialist.';
   };
-  
+
 
   const handleAddTask = () => {
     Alert.alert(
@@ -206,18 +210,19 @@ export default function HomeScreen() {
         }
       ]
     );
- 
+
   }
 
-  const handleCompleteOnboarding = () => { 
+  const handleCompleteOnboarding = () => {
     setOnboardingCompleted(true);
+    setAura(userData.aura);
     if (aura === undefined) {
       setAura(0);
     }
     messageMotor("default");
   }
 
- 
+
 
 
   const animate = (nextPage, direction) => {
@@ -269,13 +274,13 @@ export default function HomeScreen() {
   }
 
 
- 
+
   const registerUser = async () => {
     try {
       const response = await fetch('http://192.168.1.161:3000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, aura: 0 })
       });
       const data = await response.json();
       if (response.ok) {
@@ -288,52 +293,56 @@ export default function HomeScreen() {
     } catch (error) {
       alert('Hata', 'Kayıt sırasında bir hata oluştu.');
     }
-};
+  };
 
-const loginUser = async () => {
-  try {
-    // First, authenticate with your server
-    const response = await fetch('http://192.168.1.161:3000/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    
-    const data = await response.json();
-    
-    if (response.ok) {
-      // Store the JWT token
-      await AsyncStorage.setItem('userToken', data.token);
-      
-      // Set user data in state
-      setUser(data.user);
-      
-     // alert('Başarı', 'Giriş başarılı!');
-      setUserIsLoggedIn(true); // Kullanıcı girişi yapıldığı için state'e ekle
+  const loginUser = async () => {
+    try {
+      // First, authenticate with your server
+      const response = await fetch('http://192.168.1.161:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-    } else {
-      console.log('Hata', data.error);
-      alert('Hata', data.error);
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store the JWT token
+        await AsyncStorage.setItem('userToken', data.token);
+
+        // Set user data in state
+        setUser(data.user);
+
+        // alert('Başarı', 'Giriş başarılı!');
+        setUserIsLoggedIn(true); // Kullanıcı girişi yapıldığı için state'e ekle
+        console.log("1",data.user.aura);
+        console.log("2",userData.aura);
+        console.log("3",user.aura)
+        setAura(data.user.aura);
+
+      } else {
+        console.log('Hata', data.error);
+        alert('Hata', data.error);
+      }
+    } catch (error) {
+      alert('Hata', 'Giriş sırasında bir hata oluştu.');
+      console.log('Hata:', error);
     }
-  } catch (error) {
-    alert('Hata', 'Giriş sırasında bir hata oluştu.');
-    console.log('Hata:', error);
-  }
-};
+  };
 
 
- 
-const logout = async () => {
-  try {
-    await AsyncStorage.removeItem('userToken');
-    setUser(null); // veya setUser(null)
-    // Kullanıcıyı login sayfasına yönlendir
-    // navigation.navigate('Login');
-  } catch (error) {
-    console.error('Çıkış hatası:', error);
-    Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu');
-  }
-};
+
+  const logout = async () => {
+    try {
+      await AsyncStorage.removeItem('userToken');
+      setUser(null); // veya setUser(null)
+      // Kullanıcıyı login sayfasına yönlendir
+      // navigation.navigate('Login');
+    } catch (error) {
+      console.error('Çıkış hatası:', error);
+      Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu');
+    }
+  };
 
 
   // Welcome message
@@ -344,7 +353,7 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
- 
+
       <TView style={styles.titleContainer}>
         <TText
           type="title"
@@ -367,8 +376,8 @@ const logout = async () => {
         </TText>
       </TButton>
     </Animated.View>
-  ); 
- 
+  );
+
   // What we are do
   const pageTwo = (
     <Animated.View style={[
@@ -378,17 +387,17 @@ const logout = async () => {
       }
     ]}>
       <TView style={styles.heroHeader}>
-          <TButton style={styles.skipIcon}
+        <TButton style={styles.skipIcon}
           onPress={() => handleBackPage()}
+        >
+          <TText
+            style={{
+              color: '#FFFFFF',
+            }}
           >
-            <TText
-              style={{
-                color: '#FFFFFF',
-              }}
-            >
-              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
-            </TText>
-          </TButton>
+            <Ionicons name='arrow-back-outline' size={28} style={{ color: "#fff" }}></Ionicons>
+          </TText>
+        </TButton>
       </TView>
       <TView style={styles.container}>
         <TText
@@ -428,27 +437,27 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
-            <TView style={styles.heroHeader}>
-          <TButton style={{
-            position: 'absolute',
-            top: 20,
-            left: 0,
-            padding: 16,
-             
+      <TView style={styles.heroHeader}>
+        <TButton style={{
+          position: 'absolute',
+          top: 20,
+          left: 0,
+          padding: 16,
 
-          }}
+
+        }}
           onPress={() => handleBackPage()}
-          >
-            <TText
-              style={{
-                color: '#FFFFFF',
+        >
+          <TText
+            style={{
+              color: '#FFFFFF',
 
-              }}
-            >
- 
-              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
-            </TText>
-          </TButton>
+            }}
+          >
+
+            <Ionicons name='arrow-back-outline' size={28} style={{ color: "#fff" }}></Ionicons>
+          </TText>
+        </TButton>
       </TView>
       <TView style={styles.container}>
         <TText
@@ -461,7 +470,7 @@ const logout = async () => {
           type='default'
           style={styles.simpleText}
         >
-          
+
           Our app uses machine learning to analyze your daily activities and provide personalized feedback. The more you use it, the smarter it gets! Our goal is to help you build better habits and improve your productivity over time.
         </TText>
       </TView>
@@ -475,7 +484,7 @@ const logout = async () => {
           type="default"
           style={styles.simpleText}
         >
-         
+
           Next 🚀
         </TText>
       </TButton>
@@ -490,100 +499,100 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
-            <TView style={styles.heroHeader}>
-          <TButton style={styles.skipIcon}
+      <TView style={styles.heroHeader}>
+        <TButton style={styles.skipIcon}
           onPress={() => handleBackPage()}
+        >
+          <TText
+            style={{
+              color: '#FFFFFF',
+            }}
           >
-            <TText
-              style={{
-                color: '#FFFFFF',
-              }}
-            >
-              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
-            </TText>
-          </TButton>
+            <Ionicons name='arrow-back-outline' size={28} style={{ color: "#fff" }}></Ionicons>
+          </TText>
+        </TButton>
       </TView>
       <TView style={styles.container}>
-     
+
         <TView
           style={{
-           
+
             justifyContent: 'center',
             alignItems: 'center',
           }}
-          
+
         >
-                <TView
-                style={{
-                 
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-                >
-                    <TText
-                type="title"
-                style={styles.headerText}
-              >
-                Select your avatar 🤠!
-              </TText>
-              <TText
-                type='default'
-                style={styles.simpleText}
-              >
-                Choose an avatar that represents you! You can change it later in the settings menu.
-              </TText>
-              </TView>
-                <ScrollView 
-                horizontal={true}
-                showsHorizontalScrollIndicator={false}
-                style={{
-                  width: '100%',
-                 
-                }}
+          <TView
+            style={{
 
-                >
-                
-                  <TView
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <TText
+              type="title"
+              style={styles.headerText}
+            >
+              Select your avatar 🤠!
+            </TText>
+            <TText
+              type='default'
+              style={styles.simpleText}
+            >
+              Choose an avatar that represents you! You can change it later in the settings menu.
+            </TText>
+          </TView>
+          <ScrollView
+            horizontal={true}
+            showsHorizontalScrollIndicator={false}
+            style={{
+              width: '100%',
+
+            }}
+
+          >
+
+            <TView
+              style={{
+                flexDirection: 'row',
+                gap: 8,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <TView
+                style={[styles.card, selectedAvatar === 1 && styles.cardHover]}
+                onTouchStart={() => setSelectedAvatar(1)}
+              >
+                <Image
+                  source={require('@/assets/images/avatar1.png')}
                   style={{
-                    flexDirection: 'row',
-                    gap: 8,
-                    justifyContent: 'center',
-                    alignItems: 'center',
+                    width: 100,
+                    height: 200,
+                    resizeMode: 'contain',
                   }}
-                  >
-                  <TView
-                    style={[styles.card, selectedAvatar === 1 && styles.cardHover]}
-                    onTouchStart={() => setSelectedAvatar(1)}
-                  >
-                    <Image
-                    source={require('@/assets/images/avatar1.png')}
-                    style={{
-                      width: 100,
-                      height: 200,
-                      resizeMode: 'contain',
-                    }}
-                    resizeMode="contain"
-                    />
-                  </TView>
-                  <TView
-                    style={[styles.card, selectedAvatar === 2 && styles.cardHover]}
-                    onTouchStart={() => setSelectedAvatar(2)}
-                  >
-                    <Image
-                      source={require('@/assets/images/avatar2.png')}
-                      style={{
-                        width: 100,
-                        height: 200,
-                        resizeMode: 'contain',
-                      }}
-                      resizeMode='contain'
-                    />
-                  </TView>
-                  </TView>
+                  resizeMode="contain"
+                />
+              </TView>
+              <TView
+                style={[styles.card, selectedAvatar === 2 && styles.cardHover]}
+                onTouchStart={() => setSelectedAvatar(2)}
+              >
+                <Image
+                  source={require('@/assets/images/avatar2.png')}
+                  style={{
+                    width: 100,
+                    height: 200,
+                    resizeMode: 'contain',
+                  }}
+                  resizeMode='contain'
+                />
+              </TView>
+            </TView>
 
-                </ScrollView>
-                  
-               {/*
+          </ScrollView>
+
+          {/*
                
                Maybe we use later
                <TText>
@@ -591,22 +600,22 @@ const logout = async () => {
                 </TText> 
                 */}
 
-                </TView>
-              </TView>
-              <TButton
-                type="default"
-                buttonType="opacity"
-                onPress={() => handleSkipPage()}
-                style={styles.button}
-                >
-                <TText
-                  type="default"
-                  style={styles.simpleText}
-                >
-                
-                  Next 🚀
-                </TText>
-          </TButton>
+        </TView>
+      </TView>
+      <TButton
+        type="default"
+        buttonType="opacity"
+        onPress={() => handleSkipPage()}
+        style={styles.button}
+      >
+        <TText
+          type="default"
+          style={styles.simpleText}
+        >
+
+          Next 🚀
+        </TText>
+      </TButton>
     </Animated.View>
   );
 
@@ -618,53 +627,53 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
-          <TView style={styles.heroHeader}>
-          <TButton style={styles.skipIcon}
+      <TView style={styles.heroHeader}>
+        <TButton style={styles.skipIcon}
           onPress={() => handleBackPage()}
+        >
+          <TText
+            style={{
+              color: '#FFFFFF',
+            }}
           >
-            <TText
-              style={{
-                color: '#FFFFFF',
-              }}
-            >
-              
-              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
-            </TText>
-          </TButton>
+
+            <Ionicons name='arrow-back-outline' size={28} style={{ color: "#fff" }}></Ionicons>
+          </TText>
+        </TButton>
       </TView>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false} >
         <TView
           style={styles.container}
         >
 
-        <TText
-          type="title"
-          style={styles.headerText}
-        >
-          Select Your Avatar Name 🚀?
-        </TText>
-        <TText
-          type='default'
-          style={styles.simpleText}
-        >
-          Select your avatar name for the app. You can change it later in the settings menu.
-        </TText>
-        <TextInput
-          style={{
-            height: 40,
-            borderColor: 'gray',
-            color: '#ffffff',
-            minWidth: 100,
-            textAlign: 'center',
-            borderWidth: 1,
-            borderRadius: 8,
-            padding: 8,
-            margin: 8,
-          }}
-          onChangeText={text => onChangeText(text)}
-          avatarName={avatarName}
-        />
-      </TView>  
+          <TText
+            type="title"
+            style={styles.headerText}
+          >
+            Select Your Avatar Name 🚀?
+          </TText>
+          <TText
+            type='default'
+            style={styles.simpleText}
+          >
+            Select your avatar name for the app. You can change it later in the settings menu.
+          </TText>
+          <TextInput
+            style={{
+              height: 40,
+              borderColor: 'gray',
+              color: '#ffffff',
+              minWidth: 100,
+              textAlign: 'center',
+              borderWidth: 1,
+              borderRadius: 8,
+              padding: 8,
+              margin: 8,
+            }}
+            onChangeText={text => onChangeText(text)}
+            avatarName={avatarName}
+          />
+        </TView>
       </TouchableWithoutFeedback>
       <TButton
         type="default"
@@ -714,114 +723,116 @@ const logout = async () => {
 
       const data = await response.json();
       setUserData(data);
+      setAura(data.user.aura);
+      console.log("4",data.user.aura);
     } catch (error) {
       console.error('Kullanıcı bilgisi alınırken hata:', error);
       Alert.alert('Hata', 'Kullanıcı bilgileri alınamadı');
     }
   };
 
-const handleSleepEvent = async () => {
-  try {
-    console.log('Sleep duration:', sleepHours);
-    
+  const handleSleepEvent = async () => {
+    try {
+      console.log('Sleep duration:', sleepHours);
 
-    // PUT isteği
-    const userUpdateResponse = await fetch(`http://192.168.1.161:3000/api/collection/users/${userData.uid}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ dailySleepHours: sleepHours }),
-    });
 
-    // Yanıtı kontrol et
-    const responseData = await userUpdateResponse.json();
-    //console.log('Raw response:', userUpdateResponse);
-    console.log('Response Data:', responseData);
+      // PUT isteği
+      const userUpdateResponse = await fetch(`http://192.168.1.161:3000/api/collection/users/${userData.uid}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dailySleepHours: sleepHours }),
+      });
 
-    if (userUpdateResponse.ok) {
-      console.log('User updated successfully');
-      handleCompleteOnboarding(); // Başarı durumunda onboarding işlemini tamamla
-    } else {
-      console.log('Update failed:', responseData.error); // Hata mesajını logla
-      alert('Error', responseData.error); // Hata durumunda kullanıcıya bildir
+      // Yanıtı kontrol et
+      const responseData = await userUpdateResponse.json();
+      //console.log('Raw response:', userUpdateResponse);
+      console.log('Response Data:', responseData);
+
+      if (userUpdateResponse.ok) {
+        console.log('User updated successfully');
+        handleCompleteOnboarding(); // Başarı durumunda onboarding işlemini tamamla
+      } else {
+        console.log('Update failed:', responseData.error); // Hata mesajını logla
+        alert('Error', responseData.error); // Hata durumunda kullanıcıya bildir
+      }
+
+    } catch (error) {
+      console.error('Error occurred:', error);
+      alert('Hata', 'Güncelleme sırasında bir hata oluştu.');
     }
+  };
 
-  } catch (error) {
-    console.error('Error occurred:', error);
-    alert('Hata', 'Güncelleme sırasında bir hata oluştu.');
-  }
-};
 
-  
   const pageSix = (
-        <Animated.View
-          style={[
-           
-            {
-              opacity: fadeAnim,
-              transform: [{ translateX: slideAnim }],
-            },
-          ]}
-        >   
-         <TView style={styles.heroHeader}>
-          <TButton style={styles.skipIcon}
+    <Animated.View
+      style={[
+
+        {
+          opacity: fadeAnim,
+          transform: [{ translateX: slideAnim }],
+        },
+      ]}
+    >
+      <TView style={styles.heroHeader}>
+        <TButton style={styles.skipIcon}
           onPress={() => handleBackPage()}
+        >
+          <TText
+            style={{
+              color: '#FFFFFF',
+            }}
           >
-            <TText
-              style={{
-                color: '#FFFFFF',
-              }}
-            >
-              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
-            </TText>
-          </TButton>
+            <Ionicons name='arrow-back-outline' size={28} style={{ color: "#fff" }}></Ionicons>
+          </TText>
+        </TButton>
       </TView>
       <TView
-       style={
-       styles.container
-       }
-    >    
-        
-            <Text style={styles.headerText}>Sleep Duration</Text>
-            <Text style={styles.subHeaderText}>
-              Daily sleep duration is important for your health and well-being.
-            </Text>
-          
-    
-          <View style={styles.pickerContainer}>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={sleepHours}
-                style={styles.picker}
-                onValueChange={(itemValue) => setSleepHours(itemValue)}
-              >
-                {Array.from({ length: 24 }, (_, i) => (
-                  <Picker.Item key={i} label={`${i} Hours`} value={i}  />
-                ))}
-              </Picker>
-            </View>
-    
-            
+        style={
+          styles.container
+        }
+      >
+
+        <Text style={styles.headerText}>Sleep Duration</Text>
+        <Text style={styles.subHeaderText}>
+          Daily sleep duration is important for your health and well-being.
+        </Text>
+
+
+        <View style={styles.pickerContainer}>
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={sleepHours}
+              style={styles.picker}
+              onValueChange={(itemValue) => setSleepHours(itemValue)}
+            >
+              {Array.from({ length: 24 }, (_, i) => (
+                <Picker.Item key={i} label={`${i} Hours`} value={i} />
+              ))}
+            </Picker>
           </View>
-    
-          <Animated.Text
-            style={[
-              styles.emoji,
-              {
-                transform: [{ scale: bounceAnim }],
-              },
-            ]}
-          >
-            {getEmoji()}
-          </Animated.Text>
-    
-          <Text style={styles.sleepDuration}>
-            {sleepHours} Hours
-          </Text>
-          <Text style={styles.sleepQuality}>{getSleepQualityMessage()}</Text>
-     
+
+
+        </View>
+
+        <Animated.Text
+          style={[
+            styles.emoji,
+            {
+              transform: [{ scale: bounceAnim }],
+            },
+          ]}
+        >
+          {getEmoji()}
+        </Animated.Text>
+
+        <Text style={styles.sleepDuration}>
+          {sleepHours} Hours
+        </Text>
+        <Text style={styles.sleepQuality}>{getSleepQualityMessage()}</Text>
+
       </TView>
       <TButton
         type="default"
@@ -836,101 +847,132 @@ const handleSleepEvent = async () => {
           Next 🚀
         </TText>
       </TButton>
-      
-        </Animated.View>
+
+    </Animated.View>
   );
 
   const { width } = Dimensions.get('window');
   let ref;
+
+
+const[ pageState, setPageState ] = useState(true);
+  const toggleForm = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      //setUserIsLoggedIn(!isLogin);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+    setPageState(!pageState);
+  };
+
+
   const LoginPage = (
-    <Animated.View style={[
-      {
-        opacity: fadeAnim,
-        transform: [{ translateX: slideAnim }]
-      }
-    ]}>
-           
-      <TView  
-        style={styles.container}
-     >
-        <TView 
-            style={{
-              borderWidth: 1,
-              borderColor: '#FFFFFF',
-              padding: 16,
-              borderRadius: 8,
-            }}
-        >
-      {user ? (
-    
-        <TView>
-          <TText style={{ fontSize: 18, fontWeight: 'bold' }}>Hoş geldiniz, {user.email}!</TText>
-          <TText>Kullanıcı ID: {user.uid}</TText>
-          <TButton   onPress={logout}>
-            Çıkış Yap
-          </TButton>
-        </TView>
-      ) : (
- 
-        <TView 
-          style={{
-            justifyContent: 'center',
-            padding: 16,
-          }}
-        >
-          <TText  
-            type='title'
-            style={{
-              marginBottom: 16,
-            }}
-          >
-            Giriş/Kayıt
-        </TText>
-          <TextInput
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            style={{ 
-              borderWidth: 1, 
-              padding: 10, 
-              width: 200, 
-              marginBottom: 10, 
-              color: '#ffffff',
-              borderColor: '#ffffff',
-              borderRadius: 8,
-            }}
-          />
-          <TextInput
-            placeholder="Şifre"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            style={{ 
-              borderWidth: 1, 
-              padding: 10, 
-              width: 200, 
-              marginBottom: 10, 
-              color: '#ffffff',
-              borderColor: '#ffffff',
-              borderRadius: 8,
-            }}
-          />
-          <TButton type='pressable' style={{borderWidth: 1, borderColor: "#fff", borderRadius: 8 , marginBottom: 10}} title="Kayıt Ol" onPress={registerUser}>
-            Kayıt Ol
-          </TButton>
-          <TButton type='pressable' style={{borderWidth: 1, borderColor: "#fff", borderRadius: 8 , marginBottom: 10 }} title="Giriş Yap" onPress={loginUser} >
-            Giriş Yap
-          </TButton>
-        </TView>
-      )}
-    </TView>
+    <TView  >
+      <TView  >
+        {
+          pageState ? (
+            <Animated.View style={{ opacity: fadeAnim }}>
+            <TText type="title" style={styles.formTitle}>
+              Giriş Yap
+            </TText>
+            <TView style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={24} color="#FFFFFF" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                style={styles.input}
+                placeholderTextColor="#CCCCCC"
+              />
+            </TView>
+            <TView style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={24} color="#FFFFFF" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Şifre"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                style={styles.input}
+                placeholderTextColor="#CCCCCC"
+              />
+            </TView>
+            <TButton
+              type="pressable"
+              style={styles.submitButton}
+              onPress={loginUser}
+            >
+              <TText style={styles.submitButtonText}>
+                Giriş Yap
+              </TText>
+            </TButton>
+            <TouchableOpacity onPress={toggleForm} style={styles.toggleContainer}>
+              <TText style={styles.toggleText}>
+                Hesabınız yok mu? Kayıt olun
+              </TText>
+            </TouchableOpacity>
+          </Animated.View>
+          ) : (  
+
+            <Animated.View style={{ opacity: fadeAnim }}>
+            <TText type="title" style={styles.formTitle}>
+              Kayıt Ol
+            </TText>
+            <TView style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={24} color="#FFFFFF" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                style={styles.input}
+                placeholderTextColor="#CCCCCC"
+              />
+            </TView>
+            <TView style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={24} color="#FFFFFF" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Şifre"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                style={styles.input}
+                placeholderTextColor="#CCCCCC"
+              />
+            </TView>
+            <TButton
+              type="pressable"
+              style={styles.submitButton}
+              onPress={registerUser}
+            >
+              <TText style={styles.submitButtonText}>
+                Kayıt Ol
+              </TText>
+            </TButton>
+            <TouchableOpacity onPress={toggleForm} style={styles.toggleContainer}>
+              <TText style={styles.toggleText}>
+                Zaten hesabınız var mı? Giriş yapın
+              </TText>
+            </TouchableOpacity>
+          </Animated.View>
+             
+          )
+        }
       </TView>
-       
-    </Animated.View>
+    </TView>
   );
 
  
- 
+
+
+
+
+
 
   const MainPage = (
     <TView style={{
@@ -939,113 +981,236 @@ const handleSleepEvent = async () => {
       alignItems: 'center',
     }}
     >
- 
-        <TView 
+
+      <TView
         style={{
           marginTop: 16,
           justifyContent: 'center',
           alignItems: 'center',
         }}
       >
-      <TView 
-        style={{
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: '#FFFFFF',
-          padding: 16,
-          borderRadius: 20,
-          margin: 16,
-          shadowColor: "#000",
-          shadowOffset: {
-            width: 0,
-            height: 2,
-          },
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-          elevation: 5,
-          marginBottom: 30,
-          position: 'relative',
-        }}
-      >
+        {
+          // Header
+        }
         <TView
-           
           style={{
-            color: '#000000',
-            backgroundColor: '#FFFFFF',
-            
-            padding: 15,
+            flexDirection: 'row',
+            marginBottom: 28,
+            height: 42,
+            width: '100%',
 
           }}
         >
           <TView
-             style={{
-              backgroundColor: '#FFFFFF',
-             }}
-            
+            style={{
+              height: 42,
+              width: '80%',
+            }}
           >
-        {(() => {
-          switch (visibleAvatarComponent) {
-            case 1:
-              return (
-                <TText 
-                  style={{
-                    color: '#000000',
-                  }}
-                  >
-                    <TText
-                      style={{
-                        color: '#000000',
 
-                      }}
-                    >
-                      {avatarName + " says:  "} 
-                      <TButton
-                      type="default"
-                      buttonType="pressa"
-                      style={{
-                        color: '#000000',
-                        fontWeight: 'bold',
-                      }}
-                    
-                   
-                    onPress={() => {
-                      setAura(aura + 10);
-                      console.log("clicked");
-                    }}
-                  >
-                    
-                    <TText
-                      type='default'
-                      style={{
-                        color: '#000000',
-                        fontWeight: 'bold',
-                         
-                      }} 
-                      
-                      onPress={() => handleAddTask()}
-                    >
-                      Add Task?
-                    </TText>
-                    
-                  </TButton>  
-                    </TText>
-                   
-
-                </TText>
-              );
-            default:
-              return (
-                <TText
-                style={{
-                  color: '#000000',
-                }}>
-                  {avatarName} says: {avatarMessage}
-                </TText>
-              );
-          }
-        })()}
           </TView>
+          <TView>
+            <Modal
+            
+              animationType="slide"
+              transparent={true}
+              visible={modalVisible}
+              onRequestClose={() => {
+                setModalVisible(!modalVisible);
+                }}>
+                  <View
+                    style={styles.modalView}
+                  >
+                <View style={styles.centeredView}>
+                <ScrollView  > 
+
+                  <Text style={styles.headerModalText}>Settings</Text>
+
+                  <View style={styles.divider} /> 
+                 
+                  {/* User Avatar Section */}
+                  <View style={styles.settingItem}>
+                  <Ionicons name="person-circle-outline" size={64} color="#666" />
+                  <Text style={styles.settingLabel}>Selected Avatar: {selectedAvatar}</Text>
+                  <Text style={styles.settingValue}>Avatar Name: {avatarName}</Text>
+                  </View>
+
+                   {/* Email Section */}
+                   <View style={styles.settingItem}>
+                  <Ionicons name="bar-chart-outline" size={24} color="#666" />
+                  <Text style={styles.settingLabel}>Aura</Text>
+                  <Text style={styles.settingValue}>{userData ? userData.aura : 0}</Text>
+                  </View>
+
+                  {/* Email Section */}
+                  <View style={styles.settingItem}>
+                  <Ionicons name="mail-outline" size={24} color="#666" />
+                  <Text style={styles.settingLabel}>Email</Text>
+                  <Text style={styles.settingValue}>{userData ? userData.email : 0}</Text>
+                  </View>
+
+                  {/* Sleep Hours Section */}
+                  <View style={styles.settingItem}>
+                  <Ionicons name="moon-outline" size={24} color="#666" />
+                  <Text style={styles.settingLabel}>Sleep Hours</Text>
+                  <Text style={styles.settingValue}>{sleepHours } hours</Text>
+                  </View>
+
+                  {/* Token Section (Hidden by default) */}
+                  <TouchableOpacity
+                  style={styles.settingItem}
+                  onPress={() => setShowToken(!showToken)}
+                  >
+                  <Ionicons name="key-outline" size={24} color="#666" />
+                  <Text style={styles.settingLabel}>Auth Token</Text>
+                  <Text style={styles.settingValue}>
+                    {showToken ? token : '••••••••••••••••'}
+                  </Text>
+                  <Ionicons
+                    name={showToken ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#666"
+                    style={styles.eyeIcon}
+                  />
+                  </TouchableOpacity>
+                 
+                  <View style={styles.buttonContainer}>
+                  <Pressable
+                    style={[styles.button, styles.buttonClose, { backgroundColor: '#D63900' }]}
+                    onPress={() => setModalVisible(!modalVisible)}>
+                    <Text style={styles.buttonText}>Exit</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.button, styles.buttonClose, { backgroundColor: '#FFF470' }]}
+                    onPress={() => setModalVisible(!modalVisible)}>
+                    <Text style={styles.buttonText}>Exit With Changes</Text>
+                  </Pressable>
+                  </View>
+                  </ScrollView>
+                </View>
+                  </View>
+
+              </Modal>
+              
+              <TouchableHighlight
+                style={styles.settingsButton}
+                onPress={() => {
+                // Show Modal
+                setModalVisible(true)
+              }}
+
+            >
+              <View style={styles.iconContainer}>
+                <Ionicons
+                  name="settings-outline"
+                  size={32}
+                  color="#FFFFFF"
+                />
+              </View>
+            </TouchableHighlight>
+          </TView>
+
+
         </TView>
+        <TView
+          style={{
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#FFFFFF',
+            padding: 16,
+            borderRadius: 20,
+            margin: 16,
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: 2,
+            },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+            marginBottom: 30,
+            position: 'relative',
+          }}
+        >
+          <TView
+
+            style={{
+              color: '#000000',
+              backgroundColor: '#FFFFFF',
+
+              padding: 15,
+
+            }}
+          >
+            <TView
+              style={{
+                backgroundColor: '#FFFFFF',
+              }}
+
+            >
+              {(() => {
+                switch (visibleAvatarComponent) {
+                  case 1:
+                    return (
+                      <TText
+                        style={{
+                          color: '#000000',
+                        }}
+                      >
+                        <TText
+                          style={{
+                            color: '#000000',
+
+                          }}
+                        >
+                          {avatarName + " says:  "}
+                          <TButton
+                            type="default"
+                            buttonType="pressa"
+                            style={{
+                              color: '#000000',
+                              fontWeight: 'bold',
+                            }}
+
+
+                            onPress={() => {
+                              setAura(aura + 10);
+                              console.log("clicked");
+                            }}
+                          >
+
+                            <TText
+                              type='default'
+                              style={{
+                                color: '#000000',
+                                fontWeight: 'bold',
+
+                              }}
+
+                              onPress={() => handleAddTask()}
+                            >
+                              Add Task?
+                            </TText>
+
+                          </TButton>
+                        </TText>
+
+
+                      </TText>
+                    );
+                  default:
+                    return (
+                      <TText
+                        style={{
+                          color: '#000000',
+                        }}>
+                        {avatarName} says: {avatarMessage}
+                      </TText>
+                    );
+                }
+              })()}
+            </TView>
+          </TView>
           <TView
             style={{
               position: 'absolute',
@@ -1089,30 +1254,30 @@ const handleSleepEvent = async () => {
           type="default"
           buttonType="opacity"
           onPress={() => messageMotor("aura-info")}
-         
+
         >
-        <Image
-          source={
-            selectedAvatar === 1 ? require('@/assets/images/avatar1.png') : require('@/assets/images/avatar2.png')
-          }
-          style={{
-            width: 300,
-            height: 300,
-            resizeMode: 'contain',
-          }}
-          resizeMode='contain'
-        />
+          <Image
+            source={
+              selectedAvatar === 1 ? require('@/assets/images/avatar1.png') : require('@/assets/images/avatar2.png')
+            }
+            style={{
+              width: 300,
+              height: 300,
+              resizeMode: 'contain',
+            }}
+            resizeMode='contain'
+          />
         </TButton>
 
-          <TText
-            style={{
-              color: '#FFFFFF',
-            }}
-          >
-            Aura: {aura }
-          </TText>
-      
-        
+        <TText
+          style={{
+            color: '#FFFFFF',
+          }}
+        >
+          Aura: {aura}
+        </TText>
+
+
       </TView>
       <TView
         style={{
@@ -1121,33 +1286,33 @@ const handleSleepEvent = async () => {
           alignItems: 'end',
         }}
       >
-     
-      <TView
-          
+
+        <TView
+
           content={
             <View>
               <Text> Press Tasks Page </Text>
             </View>
           }
-          
+
           placement="bottom"
           // below is for the status bar of react navigation bar
           topAdjustment={Platform.OS === 'android' ? -StatusBar.currentHeight : 0}
         >
-        <TouchableOpacity
-            style={{  display: 'flex' , width: 250, marginTop: 20}}
-             
+          <TouchableOpacity
+            style={{ display: 'flex', width: 250, marginTop: 20 }}
+
           >
-            
-        </TouchableOpacity>
-      </TView>
-      <Tooltip
+
+          </TouchableOpacity>
+        </TView>
+        <Tooltip
           isVisible={showTip}
           content={
             <View>
-              <Text> 
-                  Go to tasks page
-                <Ionicons size={28} style={{color: "#000"}} name='arrow-down-outline'></Ionicons> </Text>
+              <Text>
+                Go to tasks page
+                <Ionicons size={28} style={{ color: "#000" }} name='arrow-down-outline'></Ionicons> </Text>
             </View>
           }
           onClose={() => setTip(false)}
@@ -1155,15 +1320,15 @@ const handleSleepEvent = async () => {
           // below is for the status bar of react navigation bar
           topAdjustment={Platform.OS === 'android' ? -StatusBar.currentHeight : 0}
         >
-        <TouchableOpacity
-            style={[{   width: '100%', marginTop: 20}]}
+          <TouchableOpacity
+            style={[{ width: '100%', marginTop: 20 }]}
             onPress={() => setTip(true)}
           >
-          <Text>
-                .
-          </Text>
-        </TouchableOpacity>
-      </Tooltip>
+            <Text>
+              .
+            </Text>
+          </TouchableOpacity>
+        </Tooltip>
       </TView>
     </TView>
   );
@@ -1226,6 +1391,24 @@ const handleSleepEvent = async () => {
 }
 
 const styles = StyleSheet.create({
+
+  settingsButton: {
+    width: 42,
+    height: 42,
+
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 42,
+    height: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contentContainer: {
+    height: 42,
+    width: '80%',
+  },
   skipIcon: {
     position: 'absolute',
     top: 20,
@@ -1296,7 +1479,7 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
   },
-  
+
   sleepQualityText: {
     fontSize: 18,
     textAlign: 'center',
@@ -1311,7 +1494,7 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     flex: 1,
     marginHorizontal: 5,
-  
+
     borderRadius: 10,
     overflow: 'hidden',
   },
@@ -1333,5 +1516,169 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     color: '#666',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    height: '%100',
+    alignItems: 'center',
+    backgroundColor: '#FBFAF4',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
+  buttonOpen: {
+    backgroundColor: '#F194FF',
+  },
+  buttonClose: {
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 4,
+    padding: 10,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  textStyle: {
+    color: 'black',
+    fontWeight: 'bold',
+    textAlign: 'center',
+
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
+    color: 'black',
+
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: '#FBFAF4',
+    borderRadius: 20,
+    padding: 35,
+    height: '80%',
+    width: '90%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  headerModalText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'black',
+    marginBottom: 10,
+  },
+  divider: {
+    marginTop: 10,
+    marginBottom: 20,
+    width: '100%',
+    height: 1,
+    backgroundColor: '#000000',
+  },
+  settingItem: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    width: '100%',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    position: 'relative',
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 8,
+  },
+  settingValue: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 'auto',
+  },
+  buttonModal: {
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 4,
+    padding: 10,
+    minWidth: '45%',
+  },
+  buttonText: {
+    color: 'black',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: '50%',
+  },
+ 
+ 
+  formTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFFFFF',
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 16,
+    paddingVertical: 10,
+  },
+  submitButton: {
+    backgroundColor: '#FFF470',
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  submitButtonText: {
+    color: '#000000',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  toggleContainer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  toggleText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
 });
