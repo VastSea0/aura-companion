@@ -89,12 +89,11 @@ export default function Tasks() {
     try {
       const baseUrl = 'http://192.168.1.161:3000/api/collection';
       
-      // userId'yi userData.uid'den alalım
       const userId = userData.uid;
       
       let response;
       if (viewMode === 'personal') {
-        // Direkt olarak POST request ile filtreleme yapalım
+      
         response = await fetch(`${baseUrl}/tasks/query`, {
           method: 'POST',
           headers: {
