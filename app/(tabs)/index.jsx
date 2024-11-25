@@ -1,5 +1,22 @@
-import { Image, StyleSheet, Platform, Animated, TouchableOpacity , Alert, View, Text, Button, ScrollView, TextInput, Pressable } from 'react-native';
-import React from 'react';
+import { 
+  Image,
+  StyleSheet,
+  Platform,
+  Animated,
+  TouchableOpacity, 
+  Alert,
+  View,
+  Text,
+  Button,
+  ScrollView,
+  TextInput,
+  Pressable,
+  SafeAreaView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Dimensions,
+} from 'react-native';
+import React, {useState, useEffect, useRef} from 'react';
 import Tooltip from 'react-native-walkthrough-tooltip';
 import { TText } from '@/components/TText';
 import { TView } from '@/components/TView';
@@ -8,34 +25,164 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { navigate } from '../_layout';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useAppContext } from '../AppContext';
+import AvatarEngine from '../../components/AvatarEngine';
+import  { addListener, removeListener } from '../../components/eventManager';
+import {Picker} from '@react-native-picker/picker';
+import ConfettiCannon, {DEFAULT_COLORS, DEFAULT_EXPLOSION_SPEED, DEFAULT_FALL_SPEED} from 'react-native-confetti-cannon';
+
 
 export default function HomeScreen() {
   const [showTip, setTip] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const [onboardingCompleted, setOnboardingCompleted] = React.useState(false);
   const [selectedAvatar, setSelectedAvatar] = React.useState(null);
-  const [avatarMessage, setAvatarMessage] = React.useState("Helo, you're welcome 🤠!");
+  const [avatarMessage, setAvatarMessage] = React.useState("");
   const [avatarName, onChangeText] = React.useState('Enter your avatar name');
-  const [aura, setAura] = React.useState(0);
   const [visibleAvatarComponent, setVisibleAvatarComponent] = React.useState(0);
   const [isClidked, setIsClicked] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [user, setUser] = React.useState(null);
   const [userIsLoggedIn, setUserIsLoggedIn] = React.useState(false);
+  const [sleepHours, setSleepHours] = useState(7);
+  const [sleepMinutes, setSleepMinutes] = useState(0);
+  const bounceAnim = useRef(new Animated.Value(1)).current;
+  const [userData, setUserData] = React.useState(null);
+  const [token, setToken] = React.useState(null);
 
 
+  // Shared states
+  const { aura, setAura, auraActivityMessage, setAuraActivityMessage } = useAppContext();
 
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
   const slideAnim = React.useRef(new Animated.Value(0)).current;
-  
- 
+
+  React.useEffect(() => {
+    const handleTaskCompleted = (activityMessage) => {
+      const newAuraActivityMessage = avatarEngine.getActivityMessage("Aura", aura);
+      console.log(newAuraActivityMessage);
+      setAuraActivityMessage(newAuraActivityMessage);
+      console.log('Görev tamamlandı:', activityMessage);
+      console.log('Yeni auraActivityMessage:', newAuraActivityMessage);
+      messageMotor('aura-info', activityMessage);
+    };
+
+    addListener('taskCompleted', handleTaskCompleted);
+
+    return () => {
+      removeListener('taskCompleted');
+    };
+    console.log('Index sayfası gösteriliyor');
+  }, [aura]);
 
   const waitingMotor = (time, callback) => {
-    setTimeout(callback, time); // setInterval yerine setTimeout kullanıyoruz
+    setTimeout(callback, time);
+  };
+
+  const avatarEngine = new AvatarEngine();
+  const messageMotor = (messageType, aMessage) => {
+    const mood = avatarEngine.calculateMood(aura);
+
+    switch (messageType) {
+      case "aura-info":
+        const auraMessage = avatarEngine.getActivityMessage("Aura", aura);
+        const dailyMessage = avatarEngine.generateDailyMessage(aura, []);
+        const moodMessage = avatarEngine.getAvatarAnimation(dailyMessage);
+        console.log('auraActivityMessage:', aMessage);
+        console.log('dailyMessage:', dailyMessage);
+        setAvatarMessage(aMessage + "," + dailyMessage);
+        break;
+
+      case "first-look":
+        if (aura < 500) {
+          setAvatarMessage("You need to collect more Aura!");
+          setTimeout(() => {
+            setAvatarMessage("Want to try some activities?");
+            setVisibleAvatarComponent(1);
+          }, 2000);
+        } else {
+          setAvatarMessage("Your aura is strong! Keep up the good work!");
+        }
+        break;
+
+      case "default":
+        const animation = avatarEngine.getAvatarAnimation(mood);
+        setAvatarMessage("Hello! Click me to see your aura status!");
+        break;
+    }
+  };
+  
+
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  useEffect(() => {
+    // Emoji bounce animation when sleep duration changes
+    Animated.sequence([
+      Animated.timing(bounceAnim, {
+        toValue: 1.2,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bounceAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [sleepHours, sleepMinutes]);
+  const getTotalHours = () => {
+    
+    const hours = Number(sleepHours);
+    const minutes = Number(sleepMinutes);
+    return hours + (minutes / 60);
   };
 
  
+  const getEmoji = () => {
+    const totalHours = getTotalHours();
+    if (totalHours < 4) return '😫';      // critically low
+    if (totalHours < 5) return '🥱';      // very low
+    if (totalHours < 6) return '😔';      // low
+    if (totalHours < 7) return '😐';      // below average
+    if (totalHours < 8) return '😊';      // good
+    if (totalHours < 9) return '😃';      // very good
+    if (totalHours < 10) return '😁';     // excellent
+    if (totalHours < 11) return '😴';     // slightly high
+    if (totalHours < 12) return '🛌';     // high
+    if (totalHours < 13) return '💤';     // very high
+    return '🌙';                          // excessive
+  };
+
+  const getSleepQualityMessage = () => {
+    const totalHours = getTotalHours();
+    if (totalHours < 4) return 'Critically low sleep! Your health needs more rest.';
+    if (totalHours < 5) return 'Very low sleep hours. Try to get more rest for better performance.';
+    if (totalHours < 6) return 'Not enough sleep. You need more rest for optimal health.';
+    if (totalHours < 7) return 'Below average sleep duration. Aim for 7-9 hours.';
+    if (totalHours < 8) return "Good sleep duration! You're in the ideal range.";
+    if (totalHours < 9) return "Perfect! You've hit the optimal sleep duration.";
+    if (totalHours < 10) return 'Excellent! You should feel fully recharged.';
+    if (totalHours < 11) return 'Slightly more than needed. 7-9 hours is ideal.';
+    if (totalHours < 12) return 'Extended sleep. You might feel groggy during the day.';
+    if (totalHours < 13) return 'Very long sleep duration. Consider reducing your sleep time.';
+    return 'Excessive sleep duration. Consider consulting a sleep specialist.';
+  };
+  
 
   const handleAddTask = () => {
     Alert.alert(
@@ -64,45 +211,18 @@ export default function HomeScreen() {
 
   const handleCompleteOnboarding = () => { 
     setOnboardingCompleted(true);
+    if (aura === undefined) {
+      setAura(0);
+    }
+    messageMotor("default");
   }
 
  
-  
-  const messageMotor = (messageType) => {
-    switch (messageType) {
-      case "aura-info":
-        setAvatarMessage("Your aura is " + aura + "!");
-        waitingMotor(2000, () => {  
-          if (aura < 10) {
-            setAvatarMessage("You need to collect more Aura");
-            waitingMotor(2000, () => { // 2 saniye bekleyip tekrar
-              setAvatarMessage("Do you want to collect more Aura?");
-              setVisibleAvatarComponent(1);
-              if (isClidked) {
-                //setAura(aura + 10);
-                //pageNavigator('tasks');
-                setVisibleAvatarComponent(0);
-                setAvatarMessage("helo");
-              }
-              console.log("aura" + aura);
-            });
-          } else if ( aura < 20) {
-            setAvatarMessage("Congratulations! You have reached your goal!");
-         
-          }
-        });
-        break;
-      case "welcome":
-        setAvatarMessage("Hello, you're welcome 🤠!");
-        break;
-      default:
-        setAvatarMessage("Hello, you're welcome 🤠!");
-        break;
-    }
-  };
-  
 
-  const animate = (nextPage) => {
+
+  const animate = (nextPage, direction) => {
+    const initialSlide = direction === 'forward' ? 100 : -100;
+    const finalSlide = direction === 'forward' ? -100 : 100;
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -110,14 +230,14 @@ export default function HomeScreen() {
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: -100,
+        toValue: finalSlide,
         duration: 200,
         useNativeDriver: true,
       })
     ]).start(() => {
       setPage(nextPage);
-      slideAnim.setValue(100);
-      
+      slideAnim.setValue(initialSlide);
+
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -134,12 +254,20 @@ export default function HomeScreen() {
   };
 
   const handleSkipPage = () => {
-    if (page >= 4) {
-      animate(0);
+    if (page >= 5) {
+      animate(0, 'forward');
       return;
     }
-    animate(page + 1);
+    animate(page + 1, 'forward');
   }
+
+  const handleBackPage = () => {
+    if (page <= 0) {
+      return;
+    }
+    animate(page - 1, 'backward');
+  }
+
 
  
   const registerUser = async () => {
@@ -208,6 +336,7 @@ const logout = async () => {
 };
 
 
+  // Welcome message
   const pageOne = (
     <Animated.View style={[
       {
@@ -215,6 +344,7 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
+ 
       <TView style={styles.titleContainer}>
         <TText
           type="title"
@@ -239,7 +369,7 @@ const logout = async () => {
     </Animated.View>
   ); 
  
-
+  // What we are do
   const pageTwo = (
     <Animated.View style={[
       {
@@ -247,6 +377,19 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
+      <TView style={styles.heroHeader}>
+          <TButton style={styles.skipIcon}
+          onPress={() => handleBackPage()}
+          >
+            <TText
+              style={{
+                color: '#FFFFFF',
+              }}
+            >
+              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
+            </TText>
+          </TButton>
+      </TView>
       <TView style={styles.container}>
         <TText
           type="title"
@@ -277,6 +420,7 @@ const logout = async () => {
     </Animated.View>
   );
 
+  // How it works
   const pageThree = (
     <Animated.View style={[
       {
@@ -284,6 +428,28 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
+            <TView style={styles.heroHeader}>
+          <TButton style={{
+            position: 'absolute',
+            top: 20,
+            left: 0,
+            padding: 16,
+             
+
+          }}
+          onPress={() => handleBackPage()}
+          >
+            <TText
+              style={{
+                color: '#FFFFFF',
+
+              }}
+            >
+ 
+              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
+            </TText>
+          </TButton>
+      </TView>
       <TView style={styles.container}>
         <TText
           type="title"
@@ -295,6 +461,7 @@ const logout = async () => {
           type='default'
           style={styles.simpleText}
         >
+          
           Our app uses machine learning to analyze your daily activities and provide personalized feedback. The more you use it, the smarter it gets! Our goal is to help you build better habits and improve your productivity over time.
         </TText>
       </TView>
@@ -315,6 +482,7 @@ const logout = async () => {
     </Animated.View>
   );
 
+  // Select your avatar
   const pageFour = (
     <Animated.View style={[
       {
@@ -322,6 +490,19 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
+            <TView style={styles.heroHeader}>
+          <TButton style={styles.skipIcon}
+          onPress={() => handleBackPage()}
+          >
+            <TText
+              style={{
+                color: '#FFFFFF',
+              }}
+            >
+              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
+            </TText>
+          </TButton>
+      </TView>
       <TView style={styles.container}>
      
         <TView
@@ -402,35 +583,34 @@ const logout = async () => {
 
                 </ScrollView>
                   
-                <TText>
-                  Selected Avatar: {selectedAvatar}
-                </TText>
+               {/*
+               
+               Maybe we use later
+               <TText>
+                  Selected Avatar: {selectedAvatar === 1 ? 'Boe' : 'Jane'}
+                </TText> 
+                */}
 
                 </TView>
               </TView>
               <TButton
-              type="default"
-              buttonType="opacity"
-              onPress={() => handleSkipPage()}
-              style={styles.button}
-              >
-
-              {/*
-
-                Eğer avatar seçildiyse bu buton aktif olacak.
-
-              */}
-        <TText
-          type="default"
-          style={styles.simpleText}
-        >
-         
-          Finish 🚀
-        </TText>
-      </TButton>
+                type="default"
+                buttonType="opacity"
+                onPress={() => handleSkipPage()}
+                style={styles.button}
+                >
+                <TText
+                  type="default"
+                  style={styles.simpleText}
+                >
+                
+                  Next 🚀
+                </TText>
+          </TButton>
     </Animated.View>
   );
 
+  // Select your avatar name
   const pageFive = (
     <Animated.View style={[
       {
@@ -438,7 +618,25 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
-      <TView style={styles.container}>
+          <TView style={styles.heroHeader}>
+          <TButton style={styles.skipIcon}
+          onPress={() => handleBackPage()}
+          >
+            <TText
+              style={{
+                color: '#FFFFFF',
+              }}
+            >
+              
+              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
+            </TText>
+          </TButton>
+      </TView>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false} >
+        <TView
+          style={styles.container}
+        >
+
         <TText
           type="title"
           style={styles.headerText}
@@ -466,12 +664,12 @@ const logout = async () => {
           onChangeText={text => onChangeText(text)}
           avatarName={avatarName}
         />
-
-      </TView>
+      </TView>  
+      </TouchableWithoutFeedback>
       <TButton
         type="default"
         buttonType="opacity"
-        onPress={() => handleCompleteOnboarding()}
+        onPress={() => handleSkipPage()}
         style={styles.button}
       >
         <TText
@@ -484,6 +682,166 @@ const logout = async () => {
     </Animated.View>
   );
 
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('userToken');
+      if (!storedToken) {
+        Alert.alert('Hata', 'Oturum bulunamadı');
+        return;
+      }
+
+      setToken(storedToken);
+
+      const response = await fetch('http://192.168.1.161:3000/api/user', {
+        headers: {
+          'Authorization': `Bearer ${storedToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          await AsyncStorage.removeItem('userToken');
+          // Burada navigation.navigate('Login') eklenebilir
+          return;
+        }
+        throw new Error('Kullanıcı bilgileri alınamadı');
+      }
+
+      const data = await response.json();
+      setUserData(data);
+    } catch (error) {
+      console.error('Kullanıcı bilgisi alınırken hata:', error);
+      Alert.alert('Hata', 'Kullanıcı bilgileri alınamadı');
+    }
+  };
+
+const handleSleepEvent = async () => {
+  try {
+    console.log('Sleep duration:', sleepHours);
+    
+
+    // PUT isteği
+    const userUpdateResponse = await fetch(`http://192.168.1.161:3000/api/collection/users/${userData.uid}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ dailySleepHours: sleepHours }),
+    });
+
+    // Yanıtı kontrol et
+    const responseData = await userUpdateResponse.json();
+    //console.log('Raw response:', userUpdateResponse);
+    console.log('Response Data:', responseData);
+
+    if (userUpdateResponse.ok) {
+      console.log('User updated successfully');
+      handleCompleteOnboarding(); // Başarı durumunda onboarding işlemini tamamla
+    } else {
+      console.log('Update failed:', responseData.error); // Hata mesajını logla
+      alert('Error', responseData.error); // Hata durumunda kullanıcıya bildir
+    }
+
+  } catch (error) {
+    console.error('Error occurred:', error);
+    alert('Hata', 'Güncelleme sırasında bir hata oluştu.');
+  }
+};
+
+  
+  const pageSix = (
+        <Animated.View
+          style={[
+           
+            {
+              opacity: fadeAnim,
+              transform: [{ translateX: slideAnim }],
+            },
+          ]}
+        >   
+         <TView style={styles.heroHeader}>
+          <TButton style={styles.skipIcon}
+          onPress={() => handleBackPage()}
+          >
+            <TText
+              style={{
+                color: '#FFFFFF',
+              }}
+            >
+              <Ionicons name='arrow-back-outline' size={28} style={{color: "#fff"}}></Ionicons>
+            </TText>
+          </TButton>
+      </TView>
+      <TView
+       style={
+       styles.container
+       }
+    >    
+        
+            <Text style={styles.headerText}>Sleep Duration</Text>
+            <Text style={styles.subHeaderText}>
+              Daily sleep duration is important for your health and well-being.
+            </Text>
+          
+    
+          <View style={styles.pickerContainer}>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={sleepHours}
+                style={styles.picker}
+                onValueChange={(itemValue) => setSleepHours(itemValue)}
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <Picker.Item key={i} label={`${i} Hours`} value={i}  />
+                ))}
+              </Picker>
+            </View>
+    
+            
+          </View>
+    
+          <Animated.Text
+            style={[
+              styles.emoji,
+              {
+                transform: [{ scale: bounceAnim }],
+              },
+            ]}
+          >
+            {getEmoji()}
+          </Animated.Text>
+    
+          <Text style={styles.sleepDuration}>
+            {sleepHours} Hours
+          </Text>
+          <Text style={styles.sleepQuality}>{getSleepQualityMessage()}</Text>
+     
+      </TView>
+      <TButton
+        type="default"
+        buttonType="opacity"
+        onPress={handleSleepEvent}
+        style={styles.button}
+      >
+        <TText
+          type="default"
+          style={styles.simpleText}
+        >
+          Next 🚀
+        </TText>
+      </TButton>
+      
+        </Animated.View>
+  );
+
+  const { width } = Dimensions.get('window');
+  let ref;
   const LoginPage = (
     <Animated.View style={[
       {
@@ -491,6 +849,7 @@ const logout = async () => {
         transform: [{ translateX: slideAnim }]
       }
     ]}>
+           
       <TView  
         style={styles.container}
      >
@@ -566,7 +925,7 @@ const logout = async () => {
       )}
     </TView>
       </TView>
- 
+       
     </Animated.View>
   );
 
@@ -750,7 +1109,7 @@ const logout = async () => {
               color: '#FFFFFF',
             }}
           >
-            Aura: {aura}
+            Aura: {aura }
           </TText>
       
         
@@ -787,7 +1146,7 @@ const logout = async () => {
           content={
             <View>
               <Text> 
-                Go to tasks page
+                  Go to tasks page
                 <Ionicons size={28} style={{color: "#000"}} name='arrow-down-outline'></Ionicons> </Text>
             </View>
           }
@@ -805,7 +1164,6 @@ const logout = async () => {
           </Text>
         </TouchableOpacity>
       </Tooltip>
-
       </TView>
     </TView>
   );
@@ -814,15 +1172,37 @@ const logout = async () => {
   return (
     <TView style={{
       flex: 1,
+      padding: 16,
       justifyContent: 'center',
       alignItems: 'center',
     }}>
-      {onboardingCompleted ? MainPage : (() => {
-
-        if (userIsLoggedIn == false) {
+      {onboardingCompleted ? (
+        <>
+          {MainPage}
+          <ConfettiCannon
+            count={250}
+            origin={{
+              x: -10,
+              y: -10
+            }}
+            explosionSpeed={DEFAULT_EXPLOSION_SPEED}
+            fallSpeed={DEFAULT_FALL_SPEED}
+            fadeOut={false}
+            colors={DEFAULT_COLORS}
+            autoStart={true}
+            autoStartDelay={1000}
+            onAnimationStart={() => console.log('Animation started')}
+            onAnimationStop={() => console.log('Animation stopped')}
+            onAnimationResume={() => console.log('Animation resumed')}
+            onAnimationEnd={() => console.log('Animation ended')}
+            ref={_ref => ref = _ref}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+        </>
+      ) : (() => {
+        if (!userIsLoggedIn) {
           return LoginPage;
-        
-        } else if (userIsLoggedIn == true) {
+        } else if (userIsLoggedIn) {
           switch (page) {
             case 0:
               return pageOne;
@@ -834,18 +1214,31 @@ const logout = async () => {
               return pageFour;
             case 4:
               return pageFive;
+            case 5:
+              return pageSix;
             default:
               return pageOne;
-          
-        };
-      }
-
+          }
+        }
       })()}
     </TView>
   );
 }
 
 const styles = StyleSheet.create({
+  skipIcon: {
+    position: 'absolute',
+    top: 20,
+    left: 0,
+    padding: 16,
+  },
+
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 50,
+  },
   card: {
     borderColor: '#FFFFFF',
     borderWidth: 1,
@@ -870,6 +1263,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     lineHeight: 32,
     color: '#FFFFFF',
+  },
+  subHeaderText: {
+    fontSize: 16,
+    color: '#666',
   },
   simpleText: {
     fontSize: 16,
@@ -898,5 +1295,43 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: 'absolute',
+  },
+  
+  sleepQualityText: {
+    fontSize: 18,
+    textAlign: 'center',
+    color: '#333',
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  pickerWrapper: {
+    flex: 1,
+    marginHorizontal: 5,
+  
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 150,
+  },
+  emoji: {
+    fontSize: 70,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  sleepDuration: {
+    fontSize: 20,
+    textAlign: 'center',
+    color: '#333',
+    marginBottom: 10,
+  },
+  sleepQuality: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
   },
 });
