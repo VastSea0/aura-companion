@@ -6,269 +6,34 @@ import { TButton } from '@/components/TButton';
 import { SelectList } from "react-native-dropdown-select-list";
 import { AntDesign } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AvatarEngine from '@/components/AvatarEngine';
+import {AvatarEngine} from '../../components/AvatarEngine';
 import {notify} from '@/components/eventManager';
 
 import { useAppContext } from '../AppContext';
 
-export default function Tasks() {
-  const [tasks, setTasks] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [viewMode, setViewMode] = React.useState('personal');
-  const [filterMode, setFilterMode] = React.useState('all'); // Yeni state
-  const [selectedAuraEvent, setSelectedAuraEvent] = React.useState("");
-  const [userData, setUserData] = React.useState(null);
-  const [token, setToken] = React.useState(null);
-
-  // Shared states
-  const { aura, setAura, auraActivityMessage, setAuraActivityMessage } = useAppContext();
-
-  const data = [
-    {key: '1', value: 'Artistic Activities', aura: 200},
-    {key: '2', value: 'Playing Games', aura: -100},
-    {key: '3', value: 'Watching Videos', aura: -75},
-    {key: '4', value: 'Scrolling Photos on Social Media', aura: -100},
-    {key: '5', value: 'Short Video Streaming', aura: -200},
-    {key: '6', value: 'Outdoor Activities', aura: 150},
-    {key: '7', value: 'Focus Required Activities', aura: 250},
-    {key: '8', value: 'Social Activities', aura: 100},
-    {key: '9', value: 'Reading Books', aura: 100},
-    {key: '10', value: 'Meditation', aura: 150},
-    {key: '11', value: 'Cooking', aura: 50},
-    {key: '12', value: 'Learning a New Skill', aura: 200},
-    {key: '13', value: 'Exercising', aura: 150},
-    {key: '14', value: 'Listening to Music', aura: 50},
-    {key: '15', value: 'Gardening', aura: 100},
-    {key: '16', value: 'Volunteering', aura: 200}
+// Move data array outside component as a constant
+const ACTIVITY_DATA = [
+  {key: '1', value: 'Artistic Activities', aura: 200},
+  {key: '2', value: 'Playing Games', aura: -100},
+  {key: '3', value: 'Watching Videos', aura: -75},
+  {key: '4', value: 'Scrolling Photos on Social Media', aura: -100},
+  {key: '5', value: 'Short Video Streaming', aura: -200},
+  {key: '6', value: 'Outdoor Activities', aura: 150},
+  {key: '7', value: 'Focus Required Activities', aura: 250},
+  {key: '8', value: 'Social Activities', aura: 100},
+  {key: '9', value: 'Reading Books', aura: 100},
+  {key: '10', value: 'Meditation', aura: 150},
+  {key: '11', value: 'Cooking', aura: 50},
+  {key: '12', value: 'Learning a New Skill', aura: 200},
+  {key: '13', value: 'Exercising', aura: 150},
+  {key: '14', value: 'Listening to Music', aura: 50},
+  {key: '15', value: 'Gardening', aura: 100},
+  {key: '16', value: 'Volunteering', aura: 200}
 ];
 
-  const avatarEngine = new AvatarEngine();
-
-  const fetchUserData = async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem('userToken');
-      if (!storedToken) {
-        Alert.alert('Hata', 'Oturum bulunamadı');
-        return;
-      }
-
-      setToken(storedToken);
-
-      const response = await fetch('http://192.168.1.161:3000/api/user', {
-        headers: {
-          'Authorization': `Bearer ${storedToken}`,
-          'Content-Type': 'application/json'
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          await AsyncStorage.removeItem('userToken');
-          // Burada navigation.navigate('Login') eklenebilir
-          return;
-        }
-        throw new Error('Kullanıcı bilgileri alınamadı');
-      }
-
-      const data = await response.json();
-      setUserData(data);
-    } catch (error) {
-      console.error('Kullanıcı bilgisi alınırken hata:', error);
-      Alert.alert('Hata', 'Kullanıcı bilgileri alınamadı');
-    }
-  };
-
-  React.useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  const fetchTasks = async () => {
-    if (!userData) return;
-
-    setLoading(true);
-    try {
-      const baseUrl = 'http://192.168.1.161:3000/api/collection';
-      
-      const userId = userData.uid;
-      
-      let response;
-      if (viewMode === 'personal') {
-      
-        response = await fetch(`${baseUrl}/tasks/query`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            filters: [
-              {
-                field: 'userId',
-                operator: '==',
-                value: userId
-              }
-            ]
-          })
-        });
-      } else {
-        response = await fetch(`${baseUrl}/tasks`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Görevler alınırken hata oluştu');
-      }
-
-      const data = await response.json();
-      
-      if (Array.isArray(data)) {
-        setTasks(data);
-      } else {
-        console.log('Unexpected data format:', data);
-        setTasks([]);
-      }
-    } catch (error) {
-      console.error('Fetch error details:', error);
-      setTasks([]); // Hata durumunda boş array set edelim
-      Alert.alert("Hata", "Görevler yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  React.useEffect(() => {
-    if (userData) {
-      fetchTasks();
-    }
-  }, [viewMode, userData]);
-
- 
-
-  const handleCompleteTask = (task) => {
-    if (!token) {
-      Alert.alert("Hata", "Oturum bulunamadı");
-      return;
-    }
-  
-    Alert.alert(
-      "Görevi Tamamla",
-      "Bu görevi tamamladığınızdan emin misiniz?",
-      [
-        { text: "İptal", style: "cancel" },
-        {
-          text: "Tamamla",
-          style: "default",
-          onPress: async () => {
-            try {
-              const response = await fetch(`http://192.168.1.161:3000/api/collection/tasks/${task.id}`, {
-                method: 'PUT',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ completed: true })
-              });
-  
-              if (!response.ok) {
-                throw new Error('Görev güncellenirken bir hata oluştu');
-              }
-  
-              setTasks(currentTasks =>
-                currentTasks.map(t =>
-                  t.id === task.id ? { ...t, completed: true } : t
-                )
-              );
-  
-              const activityMessage = avatarEngine.getActivityMessage(task.title, task.aura);
-              notify('taskCompleted', activityMessage);
-  
-              // Aura güncellemesi
-              const newAura = aura + task.aura;
-              setAura(newAura);
-  
-              // Kullanıcı belgesini güncelle
-              const userUpdateResponse = await fetch(`http://192.168.1.161:3000/api/collection/users/${userData.uid}`, {
-                method: 'PUT',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ aura: newAura })
-              });
-  
-              if (!userUpdateResponse.ok) {
-                throw new Error('Kullanıcı belgesi güncellenirken bir hata oluştu');
-              }
-  
-            } catch (error) {
-              Alert.alert("Hata", error.message);
-            }
-          }
-        }
-      ]
-    );
-  };
-  
-
-  const handleAddTask = async () => {
-    if (!userData || !token) {
-      Alert.alert("Hata", "Oturum bilgisi bulunamadı");
-      return;
-    }
-
-    const selectedCategory = data.find(item => item.value === selectedAuraEvent);
-    if (!selectedCategory) {
-      Alert.alert("Hata", "Lütfen bir aktivite tipi seçin");
-      return;
-    }
-
-    const newTask = {
-      title: selectedCategory.value,
-      userId: userData.uid, // uid kullanıyoruz
-      completed: false,
-      aura: selectedCategory.aura,
-      createdAt: new Date().toISOString(),
-      priority: selectedCategory.value
-    };
-
-    try {
-      const response = await fetch('http://192.168.1.161:3000/api/collection/tasks', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newTask)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Görev eklenirken bir hata oluştu');
-      }
-
-      await fetchTasks(); // Görevleri yeniden yükle
-      setSelectedAuraEvent("");
-    } catch (error) {
-      console.error('Add task error:', error);
-      Alert.alert("Hata", error.message);
-    }
-  };
-
-  const getFilteredTasks = () => {
-    if (filterMode === 'completed') {
-      return tasks.filter(task => task.completed);
-    } else if (filterMode === 'incomplete') {
-      return tasks.filter(task => !task.completed);
-    }
-    return tasks;
-  };
-
-  const renderTask = ({ item }) => (
+// Extract TaskCard component
+const TaskCard = React.memo(({ item, onComplete }) => {
+  return (
     <TView style={[styles.card, item.completed && styles.completedCard]}>
       <TView style={styles.taskHeader}>
         <TText style={[
@@ -309,7 +74,7 @@ export default function Tasks() {
           type={!item.completed ? "highlight" : "disabled"}
           style={[styles.button, styles.completeButton]}
           onPress={() => !item.completed 
-            ? handleCompleteTask(item) 
+            ? onComplete(item) 
             : Alert.alert("Bu görev zaten tamamlandı")}
         >
           {item.completed ? "Tamamlandı" : "Tamamla"}
@@ -324,67 +89,347 @@ export default function Tasks() {
       </TView>
     </TView>
   );
+});
 
-  if (loading) {
+// Extract FilterButtons component
+const FilterButtons = React.memo(({ filterMode, setFilterMode }) => {
+  return (
+    <TView style={styles.filterContainer}>
+      <TButton
+        type={filterMode === 'all' ? 'highlight' : 'pressable'}
+        style={styles.filterButton}
+        onPress={() => setFilterMode('all')}
+      >
+        Tümü
+      </TButton>
+      <TButton
+        type={filterMode === 'completed' ? 'highlight' : 'pressable'}
+        style={styles.filterButton}
+        onPress={() => setFilterMode('completed')}
+      >
+        Bitti
+      </TButton>
+      <TButton
+        type={filterMode === 'incomplete' ? 'highlight' : 'pressable'}
+        style={styles.filterButton}
+        onPress={() => setFilterMode('incomplete')}
+      >
+        Devam Ediyor
+      </TButton>
+    </TView>
+  );
+});
+
+export default function Tasks() {
+  const { aura, setAura } = useAppContext(); // Component seviyesinde context'i alalım
+
+  const [state, setState] = React.useState({
+    tasks: [],
+    loading: false,
+    viewMode: 'personal',
+    filterMode: 'all',
+    selectedAuraEvent: '',
+    userData: null,
+    token: null
+  });
+
+  // Fetch user data with better error handling
+  const fetchUserData = React.useCallback(async () => {
+    try {
+      setState(prev => ({ ...prev, loading: true }));
+      
+      const storedToken = await AsyncStorage.getItem('userToken');
+      console.log('Stored token:', storedToken); // Debug log
+
+      if (!storedToken) {
+        console.log('No token found'); // Debug log
+        // Navigate to login if needed
+        // navigation.navigate('Login');
+        return;
+      }
+
+      setState(prev => ({ ...prev, token: storedToken }));
+
+      const response = await fetch('http://192.168.1.161:3000/api/user', {
+        headers: {
+          'Authorization': `Bearer ${storedToken}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          await AsyncStorage.removeItem('userToken');
+          // navigation.navigate('Login');
+          throw new Error('Oturum süresi dolmuş');
+        }
+        throw new Error('Kullanıcı bilgileri alınamadı');
+      }
+
+      const userData = await response.json();
+      console.log('User data received:', userData); // Debug log
+
+      setState(prev => ({ 
+        ...prev, 
+        userData,
+        loading: false 
+      }));
+
+    } catch (error) {
+      console.error('Kullanıcı bilgisi alınırken hata:', error);
+      Alert.alert('Hata', error.message);
+      setState(prev => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  // Initialize data on mount
+  React.useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  // Fetch tasks when user data is available
+  React.useEffect(() => {
+    if (state.userData && state.token) {
+      fetchTasks();
+    }
+  }, [state.userData, state.token]);
+
+  const handleAddTask = React.useCallback(async () => {
+    if (!state.userData || !state.token) {
+      console.log('Current state:', state); // Debug log
+      Alert.alert("Hata", "Oturum bilgisi bulunamadı. Lütfen tekrar giriş yapın.");
+      // navigation.navigate('Login');
+      return;
+    }
+
+    const selectedCategory = ACTIVITY_DATA.find(item => item.value === state.selectedAuraEvent);
+    if (!selectedCategory) {
+      Alert.alert("Hata", "Lütfen bir aktivite tipi seçin");
+      return;
+    }
+
+    try {
+      const newTask = {
+        title: selectedCategory.value,
+        userId: state.userData.uid,
+        completed: false,
+        aura: selectedCategory.aura,
+        createdAt: new Date().toISOString(),
+        priority: selectedCategory.value
+      };
+
+      const response = await fetch('http://192.168.1.161:3000/api/collection/tasks', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newTask)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Görev eklenirken bir hata oluştu');
+      }
+
+      await fetchTasks();
+      setState(prev => ({ ...prev, selectedAuraEvent: '' }));
+      Alert.alert("Başarılı", "Görev başarıyla eklendi");
+
+    } catch (error) {
+      console.error('Add task error:', error);
+      Alert.alert("Hata", error.message);
+    }
+  }, [state.userData, state.token, state.selectedAuraEvent]);
+
+  // Memoize filtered tasks
+  const filteredTasks = React.useMemo(() => {
+    if (state.filterMode === 'completed') {
+      return state.tasks.filter(task => task.completed);
+    } else if (state.filterMode === 'incomplete') {
+      return state.tasks.filter(task => !task.completed);
+    }
+    return state.tasks;
+  }, [state.tasks, state.filterMode]);
+
+  // Memoize callbacks
+  const handleCompleteTask = React.useCallback((task) => {
+    if (!state.token) {
+      Alert.alert("Hata", "Oturum bulunamadı");
+      return;
+    }
+
+    Alert.alert(
+      "Görevi Tamamla",
+      "Bu görevi tamamladığınızdan emin misiniz?",
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Tamamla",
+          style: "default",
+          onPress: async () => {
+            try {
+              const response = await fetch(`http://192.168.1.161:3000/api/collection/tasks/${task.id}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Bearer ${state.token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ completed: true })
+              });
+
+              if (!response.ok) {
+                throw new Error('Görev güncellenirken bir hata oluştu');
+              }
+
+              setState(prev => ({
+                ...prev,
+                tasks: prev.tasks.map(t =>
+                  t.id === task.id ? { ...t, completed: true } : t
+                )
+              }));
+
+              // Avatar engine mesajı oluşturma
+              const avatarEngine = new AvatarEngine();
+              const activityMessage = avatarEngine.getActivityMessage(task.title, task.aura);
+              notify('taskCompleted', activityMessage);
+
+              // Aura güncellemesi
+              const newAura = aura + task.aura;
+              setAura(newAura);
+
+              // Kullanıcı belgesini güncelle
+              const userUpdateResponse = await fetch(`http://192.168.1.161:3000/api/collection/users/${state.userData.uid}`, {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Bearer ${state.token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ aura: newAura })
+              });
+
+              if (!userUpdateResponse.ok) {
+                throw new Error('Kullanıcı belgesi güncellenirken bir hata oluştu');
+              }
+
+            } catch (error) {
+              Alert.alert("Hata", error.message);
+            }
+          }
+        }
+      ]
+    );
+  }, [state.token, state.userData, aura, setAura]);
+
+  // Optimize fetch tasks with AbortController
+  const fetchTasks = React.useCallback(async () => {
+    if (!state.userData) return;
+
+    setState(prev => ({ ...prev, loading: true }));
+    const controller = new AbortController();
+
+    try {
+      const baseUrl = 'http://192.168.1.161:3000/api/collection';
+      
+      const userId = state.userData.uid;
+      
+      let response;
+      if (state.viewMode === 'personal') {
+      
+        response = await fetch(`${baseUrl}/tasks/query`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            filters: [
+              {
+                field: 'userId',
+                operator: '==',
+                value: userId
+              }
+            ]
+          }),
+          signal: controller.signal
+        });
+      } else {
+        response = await fetch(`${baseUrl}/tasks`, {
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          signal: controller.signal
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Görevler alınırken hata oluştu');
+      }
+
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        setState(prev => ({ ...prev, tasks: data }));
+      } else {
+        console.log('Unexpected data format:', data);
+        setState(prev => ({ ...prev, tasks: [] }));
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        console.error('Fetch error:', error);
+        setState(prev => ({ ...prev, tasks: [] }));
+      }
+    } finally {
+      setState(prev => ({ ...prev, loading: false }));
+    }
+
+    return () => controller.abort();
+  }, [state.userData, state.viewMode]);
+
+  // Optimize list rendering
+  const keyExtractor = React.useCallback((item) => item.id.toString(), []);
+  const renderItem = React.useCallback(({ item }) => (
+    <TaskCard item={item} onComplete={handleCompleteTask} />
+  ), [handleCompleteTask]);
+
+  if (state.loading) {
     return (
       <TView style={styles.container}>
-        <ActivityIndicator   color="#FFFFFF" />
+        <ActivityIndicator color="#FFFFFF" />
       </TView>
     );
   }
 
   return (
-    <TView style={[styles.container, {
-     
-      paddingTop: 30,
-      overflow: 'hidden',
-       
-    }]}>
+    <TView style={[styles.container, { paddingTop: 30, overflow: 'hidden' }]}>
       <SafeAreaView />
-
+      
       <TView style={styles.header}>
         <TText type="title">Görevler</TText>
       {/*<TView style={styles.viewModeContainer}>
           <TButton
-            type={viewMode === 'personal' ? 'highlight' : 'pressable'}
+            type={state.viewMode === 'personal' ? 'highlight' : 'pressable'}
             style={styles.viewModeButton}
-            onPress={() => setViewMode('personal')}
+            onPress={() => setState(prev => ({ ...prev, viewMode: 'personal' }))}
           >
             Kişisel
           </TButton>
           <TButton
-            type={viewMode === 'all' ? 'highlight' : 'pressable'}
+            type={state.viewMode === 'all' ? 'highlight' : 'pressable'}
             style={styles.viewModeButton}
-            onPress={() => setViewMode('all')}
+            onPress={() => setState(prev => ({ ...prev, viewMode: 'all' }))}
           >
             Tümü
           </TButton>
         </TView> */}
       </TView>
 
-      <TView style={styles.filterContainer}>
-        <TButton
-          type={filterMode === 'all' ? 'highlight' : 'pressable'}
-          style={styles.filterButton}
-          onPress={() => setFilterMode('all')}
-        >
-          Tümü
-        </TButton>
-        <TButton
-          type={filterMode === 'completed' ? 'highlight' : 'pressable'}
-          style={styles.filterButton}
-          onPress={() => setFilterMode('completed')}
-        >
-          Bitti
-        </TButton>
-        <TButton
-          type={filterMode === 'incomplete' ? 'highlight' : 'pressable'}
-          style={styles.filterButton}
-          onPress={() => setFilterMode('incomplete')}
-        >
-          Devam Ediyor
-        </TButton>
-      </TView>
+      <FilterButtons 
+        filterMode={state.filterMode} 
+        setFilterMode={(mode) => setState(prev => ({ ...prev, filterMode: mode }))} 
+      />
 
       <TView style={styles.controlPanel}>
         <SelectList 
@@ -392,10 +437,10 @@ export default function Tasks() {
           boxStyles={styles.selectBox}
           dropdownStyles={styles.dropdown}
           dropdownTextStyles={styles.dropdownText}
-          setSelected={setSelectedAuraEvent}
+          setSelected={(value) => setState(prev => ({ ...prev, selectedAuraEvent: value }))}
           arrowicon={<AntDesign name="downcircle" size={24} color="white" />}
           searchicon={<AntDesign name="search1" size={24} color="white" />}
-          data={data}
+          data={ACTIVITY_DATA}
           save="value"
           placeholder="Tip seçiniz"
         />
@@ -410,11 +455,14 @@ export default function Tasks() {
       </TView>
 
       <FlatList
-        data={getFilteredTasks()}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderTask}
+        data={filteredTasks}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={5}
       />
     </TView>
   );

@@ -314,9 +314,9 @@ export default function HomeScreen() {
         setUser(data.user);
 
         // alert('Başarı', 'Giriş başarılı!');
-        setUserIsLoggedIn(true); // Kullanıcı girişi yapıldığı için state'e ekle
-        console.log("1",data.user.aura);
-        console.log("2",userData.aura);
+        setUserIsLoggedIn(true); //  Change state to logged in
+        console.log("1",data.user.aura); // try to get aura value from user object
+        console.log("2",userData.aura);  // now please work
         console.log("3",user.aura)
         setAura(data.user.aura);
 
@@ -1297,7 +1297,7 @@ const[ pageState, setPageState ] = useState(true);
 
           placement="bottom"
           // below is for the status bar of react navigation bar
-          topAdjustment={Platform.OS === 'android' ? -StatusBar.currentHeight : 0}
+          //topAdjustment={Platform.OS === 'android' ? -StatusBar.currentHeight : 0}
         >
           <TouchableOpacity
             style={{ display: 'flex', width: 250, marginTop: 20 }}
@@ -1318,7 +1318,7 @@ const[ pageState, setPageState ] = useState(true);
           onClose={() => setTip(false)}
           placement="bottom"
           // below is for the status bar of react navigation bar
-          topAdjustment={Platform.OS === 'android' ? -StatusBar.currentHeight : 0}
+          //topAdjustment={Platform.OS === 'android' ? -StatusBar.currentHeight : 0}
         >
           <TouchableOpacity
             style={[{ width: '100%', marginTop: 20 }]}

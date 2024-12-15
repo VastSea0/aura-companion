@@ -273,6 +273,41 @@ class AvatarEngine {
   
     return analysis;
   }
+  
+  getActivityMessage(activity, aura) {
+    // Pozitif aktiviteler için mesajlar
+    const positiveMessages = [
+      `Harika! ${activity} ile ruhunu besliyorsun! (+${aura})`,
+      `${activity} yaparak kendine yatırım yapıyorsun! (+${aura})`,
+      `${activity} ile pozitif enerji topluyorsun! (+${aura})`,
+      `Muhteşem! ${activity} auranı yükseltiyor! (+${aura})`
+    ];
+
+    // Negatif aktiviteler için mesajlar
+    const negativeMessages = [
+      `${activity} auranı düşürüyor... (${aura})`,
+      `Dikkat! ${activity} ruhsal enerjini azaltıyor (${aura})`,
+      `${activity} ile auran azalıyor... (${aura})`,
+      `${activity} yaparken dikkatli ol, auran düşüyor (${aura})`
+    ];
+
+    // Rastgele mesaj seçimi
+    const messages = aura > 0 ? positiveMessages : negativeMessages;
+    const randomIndex = Math.floor(Math.random() * messages.length);
+    
+    return messages[randomIndex];
   }
+  
+  // Diğer avatar engine metodları buraya eklenebilir
+  getAvatarState(aura) {
+    if (aura >= 800) return 'enlightened';
+    if (aura >= 500) return 'happy';
+    if (aura >= 200) return 'content';
+    if (aura >= 0) return 'neutral';
+    if (aura >= -200) return 'tired';
+    if (aura >= -500) return 'exhausted';
+    return 'depleted';
+  }
+}
 
 export default AvatarEngine;
