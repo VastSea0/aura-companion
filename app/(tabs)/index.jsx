@@ -30,7 +30,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAppContext } from '../AppContext';
 import AvatarEngine from '../../components/AvatarEngine';
 import { addListener, removeListener } from '../../components/eventManager';
-import { Picker } from '@react-native-picker/picker';
+ 
 import ConfettiCannon, { DEFAULT_COLORS, DEFAULT_EXPLOSION_SPEED, DEFAULT_FALL_SPEED } from 'react-native-confetti-cannon';
 
 
@@ -54,6 +54,12 @@ export default function HomeScreen() {
   const [token, setToken] = React.useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [showToken, setShowToken] = useState(false);
+  const [modalOneVisible, setModalOneVisible] = useState(true);
+
+  const handleValueChange = (value) => {
+    setSleepHours(value);
+    setModalVisible(false);
+  };
 
 
   // Shared states
@@ -769,87 +775,138 @@ export default function HomeScreen() {
   const pageSix = (
     <Animated.View
       style={[
-
-        {
-          opacity: fadeAnim,
-          transform: [{ translateX: slideAnim }],
-        },
+      {
+      opacity: fadeAnim,
+      transform: [{ translateX: slideAnim }],
+      },
       ]}
     >
       <TView style={styles.heroHeader}>
-        <TButton style={styles.skipIcon}
-          onPress={() => handleBackPage()}
-        >
-          <TText
-            style={{
-              color: '#FFFFFF',
-            }}
-          >
-            <Ionicons name='arrow-back-outline' size={28} style={{ color: "#fff" }}></Ionicons>
-          </TText>
-        </TButton>
-      </TView>
-      <TView
-        style={
-          styles.container
-        }
+      <TButton style={styles.skipIcon}
+      onPress={() => handleBackPage()}
       >
-
-        <Text style={styles.headerText}>Sleep Duration</Text>
-        <Text style={styles.subHeaderText}>
-          Daily sleep duration is important for your health and well-being.
-        </Text>
-
-
-        <View style={styles.pickerContainer}>
-          <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={sleepHours}
-              style={styles.picker}
-              onValueChange={(itemValue) => setSleepHours(itemValue)}
-            >
-              {Array.from({ length: 24 }, (_, i) => (
-                <Picker.Item key={i} label={`${i} Hours`} value={i} />
-              ))}
-            </Picker>
-          </View>
-
-
-        </View>
-
+      <TText style={{ color: '#FFFFFF' }}> 
+      <Ionicons name='arrow-back-outline' size={28} style={{ color: "#fff" }} /> 
+      </TText>
+      </TButton>
+      </TView>
+      
+      <TView style={styles.container}> 
+      <Text style={[styles.headerText, {marginBottom: 20}]}>Sleep Duration</Text>
+      <Text style={[styles.subHeaderText, {color: '#FFFFFF', marginBottom: 30}]}> 
+      Daily sleep duration is important for your health and well-being.
+      </Text>
+       
+      <ScrollView 
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{
+      paddingHorizontal: 20,
+      alignItems: 'center'
+      }}
+      >
+      {Array.from({ length: 24 }, (_, i) => (
+      <TouchableOpacity
+        key={i}
+        style={[{
+        width: 80,
+        height: 100,
+        margin: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: {
+        width: 0,
+        height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+        }]}
+        onPress={() => handleValueChange(i)}
+      >
         <Animated.Text
-          style={[
-            styles.emoji,
-            {
-              transform: [{ scale: bounceAnim }],
-            },
-          ]}
-        >
-          {getEmoji()}
+        style={[{
+        fontSize: 32,
+        color: '#FFFFFF',
+      
+        transform: [{ scale: bounceAnim }]
+        }]}>
+          {i}H
+        {/*(() => {
+          if (i < 4) return '😫';      // 0-3 hours
+          if (i < 5) return '🥱';      // 4 hours
+          if (i < 6) return '😔';      // 5 hours
+          if (i < 7) return '😐';      // 6 hours
+          if (i < 8) return '😊';      // 7 hours
+          if (i < 9) return '😃';      // 8 hours
+          if (i < 10) return '😁';     // 9 hours
+          if (i < 11) return '😴';     // 10 hours
+          if (i < 12) return '🛌';     // 11 hours
+          if (i < 13) return '💤';     // 12 hours
+          return '🌙';                 // 13+ hours
+        })()*/}
+         
         </Animated.Text>
+      </TouchableOpacity>
+      ))}
+      </ScrollView>
 
-        <Text style={styles.sleepDuration}>
-          {sleepHours} Hours
-        </Text>
-        <Text style={styles.sleepQuality}>{getSleepQualityMessage()}</Text>
+      <View style={{
+      marginTop: 40,
+      padding: 20,
+      borderRadius: 20,
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      alignItems: 'center',
+      width: '100%'
+      }}>
+      <Animated.Text
+      style={[{
+        fontSize: 48,
+        marginBottom: 15,
+        transform: [{ scale: bounceAnim }],
+      }]}
+      >
+      {getEmoji()}
+     
+      </Animated.Text>
+
+      <Text style={[{
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: '#FFFFFF',
+      marginBottom: 10
+      }]}>
+      {sleepHours} Hours
+      </Text>
+      
+      <Text style={[{
+      color: '#FFFFFF',
+      textAlign: 'center',
+      opacity: 0.8
+      }]}>
+      {getSleepQualityMessage()}
+      </Text>
+      </View>
 
       </TView>
+
       <TButton
-        type="default"
-        buttonType="opacity"
-        onPress={handleSleepEvent}
-        style={styles.button}
+      type="default"
+      buttonType="opacity"
+      onPress={handleSleepEvent}
+      style={[styles.button ]}
       >
-        <TText
-          type="default"
-          style={styles.simpleText}
-        >
-          Next 🚀
-        </TText>
+      <TText
+      type="default" 
+      style={[styles.simpleText]}
+      >
+      Next 🚀
+      </TText>
       </TButton>
 
     </Animated.View>
-  );
+    );
 
   const { width } = Dimensions.get('window');
   let ref;
@@ -1022,57 +1079,58 @@ const[ pageState, setPageState ] = useState(true);
                     style={styles.modalView}
                   >
                 <View style={styles.centeredView}>
-                <ScrollView  > 
+                <ScrollView>
+                  <View>
+                    <Text style={styles.headerModalText}>Settings</Text>
 
-                  <Text style={styles.headerModalText}>Settings</Text>
+                    <View style={styles.divider} /> 
+                  
+                    {/* User Avatar Section */}
+                    <View style={styles.settingItem}>
+                      <Ionicons name="person-circle-outline" size={64} color="#666" />
+                      <Text style={styles.settingLabel}>Selected Avatar: {selectedAvatar}</Text>
+                      <Text style={styles.settingValue}>Avatar Name: {avatarName}</Text>
+                    </View>
 
-                  <View style={styles.divider} /> 
-                 
-                  {/* User Avatar Section */}
-                  <View style={styles.settingItem}>
-                  <Ionicons name="person-circle-outline" size={64} color="#666" />
-                  <Text style={styles.settingLabel}>Selected Avatar: {selectedAvatar}</Text>
-                  <Text style={styles.settingValue}>Avatar Name: {avatarName}</Text>
+                    {/* Email Section */}
+                    <View style={styles.settingItem}>
+                      <Ionicons name="bar-chart-outline" size={24} color="#666" />
+                      <Text style={styles.settingLabel}>Aura</Text>
+                      <Text style={styles.settingValue}>{userData ? userData.aura : 0}</Text>
+                    </View>
+
+                    {/* Email Section */}
+                    <View style={styles.settingItem}>
+                      <Ionicons name="mail-outline" size={24} color="#666" />
+                      <Text style={styles.settingLabel}>Email</Text>
+                      <Text style={styles.settingValue}>{userData ? userData.email : 0}</Text>
+                    </View>
+
+                    {/* Sleep Hours Section */}
+                    <View style={styles.settingItem}>
+                      <Ionicons name="moon-outline" size={24} color="#666" />
+                      <Text style={styles.settingLabel}>Sleep Hours</Text>
+                      <Text style={styles.settingValue}>{sleepHours} hours</Text>
+                    </View>
+
+                    {/* Token Section (Hidden by default) */}
+                    <TouchableOpacity
+                      style={styles.settingItem}
+                      onPress={() => setShowToken(!showToken)}
+                    >
+                      <Ionicons name="key-outline" size={24} color="#666" />
+                      <Text style={styles.settingLabel}>Auth Token</Text>
+                      <Text style={styles.settingValue}>
+                        {showToken ? token : '••••••••••••••••'}
+                      </Text>
+                      <Ionicons
+                        name={showToken ? "eye-off-outline" : "eye-outline"}
+                        size={20}
+                        color="#666"
+                        style={styles.eyeIcon}
+                      />
+                    </TouchableOpacity>
                   </View>
-
-                   {/* Email Section */}
-                   <View style={styles.settingItem}>
-                  <Ionicons name="bar-chart-outline" size={24} color="#666" />
-                  <Text style={styles.settingLabel}>Aura</Text>
-                  <Text style={styles.settingValue}>{userData ? userData.aura : 0}</Text>
-                  </View>
-
-                  {/* Email Section */}
-                  <View style={styles.settingItem}>
-                  <Ionicons name="mail-outline" size={24} color="#666" />
-                  <Text style={styles.settingLabel}>Email</Text>
-                  <Text style={styles.settingValue}>{userData ? userData.email : 0}</Text>
-                  </View>
-
-                  {/* Sleep Hours Section */}
-                  <View style={styles.settingItem}>
-                  <Ionicons name="moon-outline" size={24} color="#666" />
-                  <Text style={styles.settingLabel}>Sleep Hours</Text>
-                  <Text style={styles.settingValue}>{sleepHours } hours</Text>
-                  </View>
-
-                  {/* Token Section (Hidden by default) */}
-                  <TouchableOpacity
-                  style={styles.settingItem}
-                  onPress={() => setShowToken(!showToken)}
-                  >
-                  <Ionicons name="key-outline" size={24} color="#666" />
-                  <Text style={styles.settingLabel}>Auth Token</Text>
-                  <Text style={styles.settingValue}>
-                    {showToken ? token : '••••••••••••••••'}
-                  </Text>
-                  <Ionicons
-                    name={showToken ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color="#666"
-                    style={styles.eyeIcon}
-                  />
-                  </TouchableOpacity>
                  
                   <View style={styles.buttonContainer}>
                   <Pressable
@@ -1338,7 +1396,7 @@ const[ pageState, setPageState ] = useState(true);
     <TView style={{
       flex: 1,
       padding: 16,
-      justifyContent: 'center',
+      justifyContent: 'center', 
       alignItems: 'center',
     }}>
       {onboardingCompleted ? (
@@ -1351,7 +1409,7 @@ const[ pageState, setPageState ] = useState(true);
               y: -10
             }}
             explosionSpeed={DEFAULT_EXPLOSION_SPEED}
-            fallSpeed={DEFAULT_FALL_SPEED}
+            fallSpeed={DEFAULT_FALL_SPEED} 
             fadeOut={false}
             colors={DEFAULT_COLORS}
             autoStart={true}
@@ -1364,28 +1422,32 @@ const[ pageState, setPageState ] = useState(true);
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           />
         </>
-      ) : (() => {
-        if (!userIsLoggedIn) {
-          return LoginPage;
-        } else if (userIsLoggedIn) {
-          switch (page) {
-            case 0:
-              return pageOne;
-            case 1:
-              return pageTwo;
-            case 2:
-              return pageThree;
-            case 3:
-              return pageFour;
-            case 4:
-              return pageFive;
-            case 5:
-              return pageSix;
-            default:
-              return pageOne;
-          }
-        }
-      })()}
+      ) : (
+        token ? (
+          // If token exists, show onboarding pages
+          (() => {
+            switch (page) {
+              case 0:
+                return pageOne;
+              case 1:
+                return pageTwo;
+              case 2:
+                return pageThree;
+              case 3:
+                return pageFour;
+              case 4:
+                return pageFive;
+              case 5:
+                return pageSix;
+              default:
+                return pageOne;
+            }
+          })()
+        ) : (
+          // If no token, show login page
+          LoginPage
+        )
+      )}
     </TView>
   );
 }
@@ -1486,6 +1548,8 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   pickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1494,7 +1558,7 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     flex: 1,
     marginHorizontal: 5,
-
+    color: '#fff',
     borderRadius: 10,
     overflow: 'hidden',
   },
